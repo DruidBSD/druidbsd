@@ -1,0 +1,11 @@
+--- usr.sbin/sysinstall/label.c.orig	2010-02-19 12:26:30.000000000 -0800
++++ usr.sbin/sysinstall/label.c	2010-08-03 14:24:43.000000000 -0700
+@@ -1647,6 +1647,8 @@ diskLabelNonInteractive(Device *dev)
+ 			pi = tmp->private_data = new_part(PART_FILESYSTEM, mpoint, TRUE);
+ 			tmp->private_free = safe_free;
+ 			pi->newfs_data.newfs_ufs.softupdates = soft;
++			if (!strcmp(typ, "ufs1"))
++			    pi->newfs_data.newfs_ufs.ufs1 = true;
+ 		    }
+ 		}
+ 	    }

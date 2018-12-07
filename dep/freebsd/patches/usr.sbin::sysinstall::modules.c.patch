@@ -1,0 +1,12 @@
+--- usr.sbin/sysinstall/modules.c.orig	2010-08-25 19:22:02.000000000 -0700
++++ usr.sbin/sysinstall/modules.c	2010-08-25 19:22:44.000000000 -0700
+@@ -95,7 +95,8 @@ moduleInitialize(void)
+ 	    if (strcmp(dp->d_name + dp->d_namlen - (sizeof(".ko.gz") - 1), ".ko.gz") == 0) {
+ 		snprintf(module, sizeof(module), "/tmp/%s", dp->d_name);
+ 		module[strlen(module) - sizeof(".gz")] = '\0';
+-		snprintf(desc, sizeof(desc), "zcat < %s/%s > %s", MODULESDIR,
++		snprintf(desc, sizeof(desc), "%szcat < %s/%s > %s",
++		  xarchInstall() ? "/stand/" : "", MODULESDIR,
+ 		  dp->d_name, module);
+ 		system(desc);
+ 		if (kldload(module) < 0 && errno != EEXIST) {

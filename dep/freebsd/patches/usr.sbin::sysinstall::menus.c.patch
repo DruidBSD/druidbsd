@@ -1,0 +1,58 @@
+--- usr.sbin/sysinstall/menus.c.orig	2010-06-13 19:09:06.000000000 -0700
++++ usr.sbin/sysinstall/menus.c	2010-08-25 20:20:24.000000000 -0700
+@@ -206,6 +206,7 @@ DMenu MenuIndex = {
+       { " Label",		"The disk Label editor",		NULL, diskLabelEditor },
+       { " Media",		"Top level media selection menu.",	NULL, dmenuSubmenu, NULL, &MenuMedia },
+       { " Media, NFS",		"Select NFS installation media.",	NULL, mediaSetNFS },
++      { " Media, NullFS",	"Select NullFS installation media.",	NULL, mediaSetNullFS },
+       { " Media, Floppy",	"Select floppy installation media.",	NULL, mediaSetFloppy },
+       { " Media, CDROM/DVD",	"Select CDROM/DVD installation media.",	NULL, mediaSetCDROM },
+       { " Media, USB",		"Select USB installation media.",	NULL, mediaSetUSB },
+@@ -225,7 +226,7 @@ DMenu MenuIndex = {
+       { " Partition",		"The disk Slice (PC-style partition) Editor",	NULL, diskPartitionEditor },
+ #endif
+       { " PCNFSD",		"Run authentication server for PC-NFS.", dmenuVarCheck, configPCNFSD, NULL, "pcnfsd" },
+-      { " Root Password",	"Set the system manager's password.",   NULL, dmenuSystemCommand, NULL, "passwd root" },
++      { " Root Password",	"Set the system manager's password.",   NULL, configRootPasswd },
+       { " Router",		"Select routing daemon (default: routed)", NULL, configRouter, NULL, "router_enable" },
+       { " Security",		"Configure system security options", NULL, dmenuSubmenu, NULL, &MenuSecurity },
+ #ifdef WITH_SYSCONS
+@@ -241,7 +242,7 @@ DMenu MenuIndex = {
+       { " Syscons, Ttys",       "The console terminal type menu.", NULL, dmenuSubmenu, NULL, &MenuSysconsTtys },
+ #endif
+ #endif /* WITH_SYSCONS */
+-      { " Time Zone",		"Set the system's time zone.",		NULL, dmenuSystemCommand, NULL, "tzsetup" },
++      { " Time Zone",		"Set the system's time zone.",		NULL, configTimeZone },
+       { " TTYs",		"Configure system ttys.",		NULL, configEtcTtys, NULL, "ttys" },
+       { " Upgrade",		"Upgrade an existing system.",		NULL, installUpgrade },
+       { " Usage",		"Quick start - How to use this menu system.",	NULL, dmenuDisplayFile, NULL, "usage" },
+@@ -932,9 +933,10 @@ DMenu MenuMedia = {
+       { "4 HTTP",		"Install from an FTP server through a http proxy", NULL, mediaSetHTTP },
+       { "5 DOS",		"Install from a DOS partition",		NULL, mediaSetDOS },
+       { "6 NFS",		"Install over NFS",			NULL, mediaSetNFS },
+-      { "7 File System",	"Install from an existing filesystem",	NULL, mediaSetUFS },
++      { "7 UFS",		"Install from a UFS partition",		NULL, mediaSetUFS },
+       { "8 Floppy",		"Install from a floppy disk set",	NULL, mediaSetFloppy },
+       { "9 USB",		"Install from a USB drive",		NULL, mediaSetUSB },
++      { "A Directory",		"Install from an existing directory",	NULL, mediaSetNullFS },
+       { "X Options",		"Go to the Options screen",		NULL, optionsEditor },
+       { NULL } },
+ };
+@@ -1214,7 +1216,7 @@ DMenu MenuConfigure = {
+       { " Packages",	"Install pre-packaged software for FreeBSD",
+ 	NULL, configPackages },
+       { " Root Password", "Set the system manager's password",
+-	NULL,	dmenuSystemCommand, NULL, "passwd root" },
++	NULL,	configRootPasswd },
+ #ifdef WITH_SLICES
+       { " Fdisk",	"The disk Slice (PC-style partition) Editor",
+ 	NULL, diskPartitionEditor },
+@@ -1228,7 +1230,7 @@ DMenu MenuConfigure = {
+ 	NULL,	dmenuSubmenu, NULL, &MenuSyscons },
+ #endif
+       { " Time Zone",	"Set which time zone you're in",
+-	NULL,	dmenuSystemCommand, NULL, "tzsetup" },
++	NULL,	configTimeZone },
+       { " Media",	"Change the installation media type",
+ 	NULL,	dmenuSubmenu, NULL, &MenuMedia },
+ #ifdef WITH_MICE

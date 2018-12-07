@@ -1,0 +1,336 @@
+# -*- tab-width:  4 -*- ;; Emacs
+# vi: set tabstop=4     :: Vi/ViM
+#
+# Last Modified: September 13th, 2010
+# Author: Devin Teske
+############################################################ GLOBALS
+
+case "${ANSI_COLOR}" in
+[Yy][Ee][Ss])
+	export ANSI_NON="[0m"
+	export ANSI_BLD="[1m"
+	export ANSI_BLK="[30m"
+	export ANSI_RED="[31m"
+	export ANSI_GRN="[32m"
+	export ANSI_YEL="[33m"
+	export ANSI_BLU="[34m"
+	export ANSI_MAG="[35m"
+	export ANSI_CYN="[36m"
+	export ANSI_WHT="[37m"
+	;;
+esac
+
+# exit status variables
+export SUCCESS=0
+export FAILURE=1
+
+# Command to execute when we need to bludgeon the user (eg. we require
+# that the only way to proceed after an error, is to press Ctrl-C)
+export ERR_CMD="while true;do sleep 10; done"
+
+# Status indicator message formats
+export FMT_COLS=70
+export FMT_HEAD="%-${FMT_COLS}s"
+export FMT_STAT=" [${ANSI_BLD}%s${ANSI_NON}]\n"
+export MSG_GOOD="${ANSI_GRN}  OK  ${ANSI_NON}"
+export MSG_FAIL="${ANSI_RED}FAILED${ANSI_NON}"
+
+
+__cp=0 # reserved for internal use
+
+############################################################ FUNCTIONS
+
+#Functions:
+#	die([err_msg [err_type]])		//Abrubtly terminate due to an error
+#	task_begin([caption])			//Inform user that you have started a task
+#	task_end([exit_status])			//End running task and display exit status
+#	print_bold(format [text ...])	//Print to the screen in bold letters
+#	print_red(format [text ...])	//Print to the screen in red, bold letters
+#	print_green(format [text ...])	//Print to screen in green, bold letters
+#	die_if_missing(path [msg [t]])	//Make sure that a file/directory exists
+#	die_if_null(str [msg [t]])		//Make sure a string is non-NULL
+#	trunc_safe(file_path)			//Truncate a file and test for error
+#	eval_spin(command [args ...])	//Execute command w/ spinner
+#	ifs_clear()						// Instruct shell to not split words
+#	ifs_append(delim)				//Append delimter to IFS
+#	ifs_restore()					//Restore IFS to original value
+#	dhclient_lease_getid()			//Obtain IP address of primary DHCP server
+#	print_word(pos [arg ...])		//Print a positional argument
+#	mount_path_dhcp(export dir)		//Mount a remote path from DHCP server
+#	copy_file(src dest)				//Copy file (with retry prompt on fail)
+#	copy_directory(src dest)		//Copy directory (verbose, req. copy_file)
+
+# Abrubtly terminate due to an error
+die() # ( [err_msg [err_type]] )
+{
+	local err="${1}" type="${2:-UNKNOWN ERROR}"
+
+	task_end ${FAILURE}
+	[ "${err}" ] \
+		&& print_red "${type}!" \
+		&& printf " ${err}"
+
+	echo -n "${contact}" # should be set by the calling script
+	eval ${ERR_CMD}
+	exit ${FAILURE}
+}
+
+# Inform the user that you have started a task
+task_begin() # ( [caption] )
+{
+	task_end ${SUCCESS} # end the previous task
+	printf "${FMT_HEAD}" "${1}"
+	export __task_running=YES
+
+    local str="$(printf '%s' "${1}")"
+	export __cp=${#str}
+}
+
+# End the currently running task and display exit status
+task_end() # ( [exit_status] )
+{
+	[ "${__task_running}" ] || return
+	if [ ${__cp:-0} -ge ${FMT_COLS} ]; then
+		printf "\n${FMT_HEAD}"
+		export __cp=0
+	fi
+	case "${1}" in
+	${SUCCESS}) printf "${FMT_STAT}" "${MSG_GOOD}";;
+	${FAILURE}) printf "${FMT_STAT}" "${MSG_FAIL}";;
+	esac
+	export __task_running="" # clear task state
+}
+
+# Print something to the screen in bold letters
+print_bold() # ( format [text ...] )
+{
+	printf "${ANSI_BLD}${*}${ANSI_NON}"
+}
+
+# Print something to the screen in red, bold letters
+print_red() # ( format [text ...] )
+{
+	print_bold "${ANSI_RED}${*}"
+}
+
+# Print something to the screen in green, bold letters
+print_green() # ( format [text ...] )
+{
+	print_bold "${ANSI_GRN}${*}"
+}
+
+# Make sure that a file/directory exists (or raise hell)
+die_if_missing() # ( path [err_msg [err_type]] )
+{
+	local path="${1}"
+	local msg="${2:-No such file or directory \`${path}\'}"
+	local type="${3:-FILE ERROR}"
+	[ ! "${path}" -o -e "${path}" ] && return
+
+	die "${msg}" "${type}"
+}
+
+# Make sure that a particular string is not (NULL) (or else, die)
+die_if_null() # ( string_contents [err_msg [err_type]] )
+{
+	local str="${1}"
+	local err="${2:-Unset or null value for non-optional variable}"
+	local type="${3:-UNKNOWN ERROR}"
+	[ "${str}" ] && return
+
+	die "${err}" "${type}"
+}
+
+# Truncate a file to zero bytes and test for error
+trunc_safe() # ( file_path )
+{
+	[ "${1}" ] || return
+	( eval 'echo -n > "${1}"' > /dev/null 2>&1 ) \
+		|| die "Couldn't create/truncate file \`${1}'"
+}
+
+# Execute a command (Displays a spinner while executing)
+eval_spin() # ( command [arguments ...] )
+{
+	local exit_status_file="/tmp/.$$.status"
+	[ ${#} -gt 0 ] || return ${SUCCESS}
+
+	# Make sure that the proc filesystem is mounted
+	[ -e "/proc/curproc" ] \
+		|| die "eval_spin: proc filesystem not mounted" "FATAL ERROR"
+
+	# Re-assemble the command (quote each argument)
+	local command="" n=1
+	while [ ${n} -le ${#} ]; do
+		command="${command} \"\$${n}\""
+		n=$((${n}+1))
+	done
+
+	# Execute the command (silently as to maintain prettiness)
+	echo ${FAILURE} > "${exit_status_file}"
+	eval ${command} > /dev/null 2>&1 && \
+		echo ${SUCCESS} > "${exit_status_file}" &
+	local pid="${!}" && [ ! "${pid}" ] && return ${FAILURE}
+
+	# Wait for it to complete (spin a spinner while waiting)
+	local init=1 spin="/-\\|" n=0
+	while true; do
+		[ -d "/proc/${pid}" ] || break
+		sleep 0.1 # Release time to the CPU for process accounting
+		[ -d "/proc/${pid}" ] || break
+		[ "${init}" ] && printf " " && init=""
+		printf "\b%s" $(echo "${spin}" | sed -e \
+			"s/.\{0,$((${n}%${#spin}))\}\(.\).*/\1/")
+		n=$((${n}+1))
+	done
+	[ "${init}" ] || printf "\b \b"
+
+	# Return the exit status
+	local retval=`sed < "${exit_status_file}"`
+	[ -x /bin/rm ] \
+		&& /bin/rm -f "${exit_status_file}"
+
+	return ${retval:-$FAILURE}
+}
+
+# Instruct shell to not split words
+ifs_clear() # ( )
+{
+	export __IFS="${IFS}"
+	export IFS=""
+}
+
+# Append delimter to IFS
+ifs_append() # ( delim )
+{
+	case "${1}" in
+	\\n) export IFS="${IFS}
+";;
+	\\t) export IFS="${IFS}	";;
+	*)   export IFS="${IFS}${1}";;
+	esac
+}
+
+# Restore IFS to original value
+ifs_restore() # ( )
+{
+	export IFS="${__IFS:-$IFS}"
+}
+
+# Print a positional argument
+print_word() # ( pos [arg ...] )
+{
+	local pos="${1}"
+	[ ! "${pos}" ] && return
+	echo $(eval echo '$'$((${pos}+1)))
+}
+
+# Obtain the IP address of primary DHCP server
+dhclient_lease_getid() # ( )
+{
+	local word hkey
+	for word in `sed < /var/db/dhclient.leases 2> /dev/null`; do
+		[ "${hkey}" ] && echo "${word}" | sed -e 's/;$//' && break
+		[ "${word}" = "dhcp-server-identifier" ] && hkey=YES
+	done
+}
+
+# Mount a remote path on primary DHCP server
+mount_path_dhcp() # ( remote_path mnt_point )
+{
+	local rpath="${1}" mpath="${2}"
+	local ip=`dhclient_lease_getid`
+	[ "${rpath}" -a "${mpath}" -a "${ip}" ] || return ${FAILURE}
+
+	# Check to see if it is already mounted
+	# NOTE: known bug that you cannot mount the same export in two places
+	local mounttab="/var/db/mounttab"
+	if [ -f "${mounttab}" ]; then
+		ifs_clear; ifs_append '\n'
+		for line in `sed < "${mounttab}"`; do
+			local rsrc=`eval print_word 2 ${line}`
+			local xprt=`eval print_word 3 ${line}`
+			[ "${rsrc}" = "${ip}" -a "${xprt}" = "${rpath}" ] \
+				&& ifs_restore \
+				&& return ${SUCCESS}
+		done
+		ifs_restore
+	fi
+
+	# Mount the remote path
+	mount_nfs "${ip}:${rpath}" "${mpath}" \
+		|| die "Could not mount NFS path \`${ip}:${rpath}'"
+	return ${SUCCESS}
+}
+
+# Copy file safely (with user interaction on failure to retry)
+copy_file() # ( src_path dest_path )
+{
+	local src="${1}" dst="${2}"
+
+	# Check arguments
+	[ "${src}" -a "${dst}" ] || return ${FAILURE}
+
+	# Pedantic environment checks
+	die_if_missing "/bin/cp"
+
+	while ! cp -RPpf "${src}" "${dst}" > /dev/null 2>&1 ; do
+		printf "\n"; print_red "FILE ERROR!"
+		printf " An error occurred while trying to copy"
+		printf " \`${src}' to \`${dst}'"
+
+		[ "${auto_retry}" ] && continue
+		printf "\n\n"
+
+		read -p "Do you want to retry? [Y=Yes/A=Always/N=No]: " REPLY
+		case "${REPLY}" in
+		[Nn]|[Nn][Oo])
+			return ${FAILURE};;
+		[Aa]|[Aa][Ll][Ww][Aa][Yy][Ss])
+			export auto_retry=YES;;
+		esac
+	done
+	return ${SUCCESS}
+}
+
+# Copy directory safely (this is verbose, uses copy_file)
+copy_directory() # ( source_directory target_directory )
+{
+	local src="${1}" dst="${2}" src_path="" dst_path=""
+	local auto_retry=0
+
+	# Check arguments
+	[ "${src}" -a "${dst}" ] || return ${FAILURE}
+
+	# Pedantic environment checks
+	die_if_missing "/bin/mkdir"
+
+	# Split whole lines
+	ifs_clear; ifs_append '\n'
+
+	# Copy directories, files, and symbolic links
+	for src_path in `find $src -type d -o -type f -o -type l -mindepth 1`; do
+		dst_path="${dst}${src_path#$src}"
+		[ -e "${dst_path}" ] && continue
+
+		if [ -d "${src_path}" ]; then
+			printf "${ANSI_BLU}${dst_path}${ANSI_NON}: "
+			eval_spin mkdir -p "${dst_path}" || die \
+				"Unable to create directory \`${dst_path}'" "FILE ERROR"
+			# XXX need to copy permissions on source directory
+			printf "\b\n"
+		elif [ -f "${src_path}" -o -L "${src_path}" ]; then
+			[ -L "${src_path}" ] && printf "${ANSI_CYN}"
+			printf "${dst_path}${ANSI_NON} "
+			eval_spin copy_file "${src_path}" "${dst_path}" || die \
+				"Could not copy \`${src_path}' to \`${dst_path}'" "FILE ERROR"
+			# XXX need to copy permissions on source file
+			printf "\b\n"
+		fi
+	done
+
+	ifs_restore # Restore line splitting
+	return ${SUCCESS}
+}
+
+### END INCLUDE ###

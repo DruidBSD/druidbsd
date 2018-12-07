@@ -1,0 +1,217 @@
+$Header: /cvsroot/druidbsd/druidbsd/druidbsd/doc/VERSIONING,v 1.1.1.1 2010/09/15 20:36:04 devinteske Exp $
+vi: syntax=disabled
+
+
+INTRODUCTION TO DRUID RELEASE ENGINEERING
+
+Hello and welcome to the ``Druid'' platform. The Druid is intended to be
+developed and maintained by many individuals.
+
+To get you started in engineering your own project on the Druid platform, this
+document will attempt to cover in-detail the guidelines for versioning your
+Druid releases. As you maintain this software, please try and adhere to the
+strict versioning guidelines inherent to ``Open-Source'' methodology.
+
+
+RELEASE ENGINEERING GUIDELINES FOR DRUID
+
+- Before the initial release of code for a particular sub-project (i.e., `Tools
+  Druid' -- created via `make tools'), the version should be set to "0.0" (in
+  the `GNUMakefile.in' file). The reason for this is such-that if the compiled
+  software is shared with anyone, it is immediately apparent that the code is
+  of pre-release quality by-way of the pervasive "0.0" version tagging.
+
+- Besides traditional release versioning (i.e., "1.0", "1.1", "2.0", "2.1",
+  etc.) you may make-use of one of the following developmental suffixes:
+
+  Suffix  Meanining/Description
+
+    d     Developer's Preview (kept ``in-house'' during unit-testing)
+    a     Alpha release (pre-beta; very limited/select audience)
+    b     Beta release to testers for feedback prior to full-version release
+    p     Fix-up patch to full-version release AFTER full-release (if needed)
+
+  NOTE: The last suffix (p) should only be used when patching-up an already-
+        released full-version.
+
+  For example, see RELEASE ENGINEERING EXAMPLE FOR DRUID below.
+
+
+RELEASE ENGINEERING EXAMPLE FOR DRUID
+
+  Consider the following hypothetical release-cycle (listed in chronological
+  order) for the ``Tools Druid'', properly attributing each of the afore-
+  mentioned suffixes for illustrative purposes:
+
+  i. Druid_Tools-0.1d1.iso
+
+     First initial [minor] development effort. This build version would be
+     purposed to share with other developers only for peer-feedback.
+
+     The "0" major-number used in the above example would indicate that this is
+     a ``minor'' development attempt (opposed to a ``full'' development effort
+     had the major-number been "1.0" or higher).
+
+     A development release need only be in a "non-broken" state before
+     being shared. Commonly, the development level ("d1", "d2", etc.)
+     should be incremented when the developer clears some notable hurdle
+     on the way toward an `alpha', `beta', or full release. These
+     incremental development builds can be thought of as "Milestones," in
+     the most traditional sense.
+
+     ASIDE:
+     Some developers look-down upon releasing software with a "0" major-
+     version unless the devel-tag is appended ("d1" in the above example).
+     This is definitely understandable as the later-developmental stages
+     (`alpha' and `beta') are normally associated with "pre-Release" quality
+     (that is to say "pre- `fully-featured and stable' quality") -- and
+     having a ``zero-major'' (as-is the case in the above example) clearly
+     contradicts the understood purpose of alpha- and beta-testing stages.
+
+     Should you decide to start a project off with a zero-major (i.e., "0.1",
+     "0.2", etc.), it is considered best-practice to use the devel-tag
+     exclusively and never use the alpha-, beta-, or full-release versioning.
+
+     Once ``alpha'' or ``beta'' status (see below) is reached, it is considered
+     best practice to then increase the major number to non-zero.
+
+  ii. Druid_Tools-1.0a1.iso
+
+     First ``alpha stage'' release. This build version would be purposed to
+     share with anyone intimately associated with the project as a "Preview"
+     often to allow some non-technical feedback to be incorporated into the
+     developmental process.
+
+     Alpha releases are often generated and shared with project managers,
+     hand-selected end-users, ``pre-beta'' testers, fellow engineers, or even
+     investors, all for the purpose of generating feedback to be incorporated
+     into the still-developmental ``alpha'' stage of the project.
+
+     Alpha release guidelines are:
+
+        - All major features should be planned and documented.
+        - Critical major features should be fully functional.
+        - Minor features may be unfinished if documented (maintain TODO file).
+        - Minor bugs may exist without documentation (implied by alpha stage).
+        - Should be free of major critical bugs (especially ``show-stoppers'').
+
+     Alpha releases should seldom be "published".
+
+  iii. Druid_Tools-1.0b1.iso
+
+     First ``beta stage'' release. This build version would be purposed to
+     identify/fix bugs, clean-up interface elements, address minor user-
+     experience concerns, "polish jagged-edges," and generally get the software
+     ready for full-release.
+
+     The beta releases should be shared with internal ``beta-testers'' whom are
+     especially qualified due to their attention to detail and ability to file
+     quality ``bug-reports'' to development. The beta stage of the development
+     cycle is often thought of to be in two-halves -- ``early beta stage'' and
+     ``late beta stage''. Early-on in the beta stage, testers may expect to
+     identify a high number of issues, while later-on in the beta stage the
+     same testers should be identifying fewer and fewer problems in progress
+     toward the full-release.
+
+     Beta release guidelines are:
+
+        - All major and minor features should be fully-functional and ``unit-
+          tested'' to be bug-free (though beta-testing may reveal additional
+          bugs which is to-be expected).
+        - All user-supplied input from alpha-stage should be effective. No
+          further user-input-driven changes should be allowed in the beta stage
+          of development.
+        - Software should be essentially ``usable'' in the beta stage, though
+          certain minor features are allowed to be ``under-construction'' if
+          non-vital to the full-release deadline.
+
+     This stage should be decidedly shorter than prior stages. If a software
+     stays in beta-release too long, it may be evidence of a deep-rooted or
+     more complex issue at-hand that needs to be addressed before the software
+     can move-on to the full-release stage. For example, if too many major
+     changes are being made in the beta stage.
+
+  iv. Druid_Tools-1.0.iso
+
+     This is the ``full-release''. This gets shared with the intended
+     consumers. If any bugs are found, proceed to the next (and final)
+     development cycle.
+
+  v. Druid_Tools-1.0p1.iso
+
+    The ``patch stage'' release. This build version would be purposed in the
+    same manner as a full-release, except addressing some unforeseen problem.
+
+    The patch release guideleines are:
+
+       - These releases should only address critical problems reported by end-
+         users, or...
+       - Address critical security concerns.
+
+    This stage is sometimes ``retro-active'' in the fact that it is on-occasion
+    necessary to ``go-back'' and patch old releases.
+
+
+ADDING NEW PROJECTS TO DRUID
+
+    At the time of this writing, the Druid is capable of building these
+    separate projects:
+
+       - Druid Tools (a collection of various utilities)
+            $ make tools
+
+       - DruidBSD (DruidBSD Live Distribution)
+            $ make druidbsd
+
+    In-addition there are two built-in defaults:
+
+       - Druid (incorporates all sub-projects)
+            $ make all
+
+       - Dev Druid (creates ``developer's/kitchen-sink'' build)
+            $ make dev
+
+    If you want to add your own project, you would start by adding a new target
+    to `GNUMakefile.in' and give it a corresponding ``VERSION''. This will
+    allow you to add a new custom build of the Druid tree -- making a new
+    ``make'' target (i.e. `make foo') with automatic version tagging.
+
+    However, since committing a new `GNUMakefile.in' with a version set will
+    allow your tree to be built perhaps prematurely, there is a mechanism for
+    preventing the premature ``enabling'' of your tree. If you set the version
+    of your build to an empty string, users attempting to build your newly-
+    added target will get the error-message "No version specified".
+
+    This allows you to add the target for testing purposes, commit the code to
+    CVS, and continue with the lengthy process of assembling the various
+    dependencies of your build. Then, after all the core dependencies of your
+    build have been committed, you would then commit to an initial version
+    (even if only to be "0.0" initially).
+
+    Until the version string is set to some non-null value, other developers
+    will not be able to build your tree. In the meanwhile, for testing purposes
+    you should be able to test your own build by manually specifying the
+    version string to be used for a particular build, as shown in the below
+    example:
+
+       $ make -DVERSION_FOO=testbuild1 foo
+
+    For additional information on adding your own project to the Druid
+    platform which may-not pertain to VERSIONING, please consult the rest
+    of the files in the `druid/doc' directory, or ask one of the developers.
+
+
+################################################################################
+# END
+################################################################################
+#
+# $Header: /cvsroot/druidbsd/druidbsd/druidbsd/doc/VERSIONING,v 1.1.1.1 2010/09/15 20:36:04 devinteske Exp $
+#
+# $Copyright: 2010 Devin Teske. All rights reserved. $
+#
+# $Log: VERSIONING,v $
+# Revision 1.1.1.1  2010/09/15 20:36:04  devinteske
+# Initial import of project.
+#
+#
+################################################################################

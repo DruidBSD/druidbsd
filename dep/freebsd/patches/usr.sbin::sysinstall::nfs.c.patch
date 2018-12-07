@@ -1,0 +1,12 @@
+--- usr.sbin/sysinstall/nfs.c.orig	2010-08-24 07:09:46.000000000 -0700
++++ usr.sbin/sysinstall/nfs.c	2010-08-24 07:10:05.000000000 -0700
+@@ -61,7 +61,8 @@ mediaInitNFS(Device *dev)
+ 	return FALSE;
+ 
+     msgNotify("Mounting %s over NFS on %s", dev->name, mountpoint);
+-    if (vsystem("mount_nfs %s %s %s %s %s %s",
++    if (vsystem("%smount_nfs %s %s %s %s %s %s",
++		xarchInstall() ? "/stand/" : "",
+ 		!variable_cmp(VAR_NFS_TCP, "YES") ? "-T" : "",
+ 		!variable_cmp(VAR_NFS_V3, "YES") ? "-3" : "",
+ 		!variable_cmp(VAR_SLOW_ETHER, "YES") ?

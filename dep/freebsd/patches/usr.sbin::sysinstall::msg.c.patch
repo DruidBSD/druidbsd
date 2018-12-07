@@ -1,0 +1,17 @@
+--- usr.sbin/sysinstall/msg.c.orig	2010-08-24 04:47:06.000000000 -0700
++++ usr.sbin/sysinstall/msg.c	2010-08-24 04:50:04.000000000 -0700
+@@ -47,6 +47,14 @@
+     return (cp = variable_get(VAR_DEBUG)) && strcmp(cp, "no");
+ }
+ 
++Boolean
++xarchInstall(void)
++{
++    char *cp;
++
++    return (cp = variable_get(VAR_XARCH_INSTALL)) && strcmp(cp, "no");
++}
++
+ /* Whack up an informational message on the status line, in stand-out */
+ void
+ msgYap(char *fmt, ...)

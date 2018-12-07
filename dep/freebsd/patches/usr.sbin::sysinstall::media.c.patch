@@ -1,0 +1,58 @@
+--- usr.sbin/sysinstall/media.c.orig	2010-03-25 07:02:57.000000000 -0700
++++ usr.sbin/sysinstall/media.c	2010-03-30 13:37:03.000000000 -0700
+@@ -520,7 +520,7 @@ mediaSetUFS(dialogMenuItem *self)
+     char *cp;
+ 
+     mediaClose();
+-    cp = variable_get_value(VAR_UFS_PATH, "Enter a fully qualified pathname for the directory\n"
++    cp = variable_get_value(VAR_UFS_PATH, "Enter the device-name of a UFS formatted partition\n"
+ 			    "containing the FreeBSD distribution files:", 0);
+     if (!cp)
+ 	return DITEM_FAILURE;
+@@ -532,9 +532,9 @@ mediaSetUFS(dialogMenuItem *self)
+ 	strcpy(ufsDevice.name, st.f_fstypename);
+ 
+     ufsDevice.type = DEVICE_TYPE_UFS;
+-    ufsDevice.init = dummyInit;
++    ufsDevice.init = mediaInitUFS;
+     ufsDevice.get = mediaGetUFS;
+-    ufsDevice.shutdown = dummyShutdown;
++    ufsDevice.shutdown = mediaShutdownUFS;
+     ufsDevice.private = strdup(cp);
+     mediaDevice = &ufsDevice;
+     return DITEM_LEAVE_MENU;
+@@ -607,6 +607,34 @@ mediaSetNFS(dialogMenuItem *self)
+     return DITEM_LEAVE_MENU;
+ }
+ 
++int
++mediaSetNullFS(dialogMenuItem *self)
++{
++    static Device nullfsDevice;
++    char *cp;
++
++    mediaClose();
++
++    /*
++     * Prompt the user for the full path to our installation
++     * files if not already supplied previously.
++     */
++    cp = variable_get_value(VAR_NULLFS_PATH,
++	"Enter a fully qualified pathname for the directory\n"
++	"containing the FreeBSD distribution files:", 0);
++    if (!cp)
++	return DITEM_FAILURE;
++
++    strcpy(nullfsDevice.name, "nullfs");
++    nullfsDevice.type = DEVICE_TYPE_NULLFS;
++    nullfsDevice.init = mediaInitNullFS;
++    nullfsDevice.get = mediaGetNullFS;
++    nullfsDevice.shutdown = mediaShutdownNullFS;
++    nullfsDevice.private = strdup(cp);
++    mediaDevice = &nullfsDevice;
++    return DITEM_LEAVE_MENU;
++}
++
+ Boolean
+ mediaExtractDistBegin(char *dir, int *fd, int *zpid, int *cpid)
+ {

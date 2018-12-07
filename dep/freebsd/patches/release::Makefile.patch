@@ -1,0 +1,12 @@
+--- release/Makefile.orig	2010-08-22 09:18:12.000000000 -0700
++++ release/Makefile	2010-08-27 20:38:46.000000000 -0700
+@@ -413,7 +413,8 @@
+ 	mkdir -p ${CHROOTDIR}
+ 	@echo ">>> make release for ${TARGET} started on `LC_ALL=C TZ=GMT date`"
+ 	cd ${WORLDDIR} && ${NATIVEMAKE} -DWITHOUT_GAMES -DWITHOUT_HTML -DWITHOUT_LIB32 \
+-	    -DWITHOUT_MAN -DWITHOUT_NLS -DWITHOUT_PROFILE installworld DESTDIR=${CHROOTDIR}
++	    -DWITHOUT_MAN -DWITHOUT_NLS -DWITHOUT_PROFILE ${WORLD_FLAGS} installworld \
++	    DESTDIR=${CHROOTDIR}
+ 	cd ${WORLDDIR} && ${NATIVEMAKE} distribution DESTDIR=${CHROOTDIR}
+ 	if [ -f /etc/resolv.conf ]; then \
+ 		cp -p /etc/resolv.conf ${CHROOTDIR}/etc; \

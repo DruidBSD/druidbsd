@@ -1,0 +1,116 @@
+# -*- tab-width:  4 -*- ;; Emacs
+# vi: set tabstop=4     :: Vi/ViM
+
+AC_INIT
+############################################################ CONFIGURATION
+
+#
+# AC_PREREQ (VERSION)
+#
+# Minimum version of autoconf required to generate `configure'.
+#
+AC_PREREQ(2.59)
+
+#
+# AC_REVISION (REVISION-INFO)
+#
+# Place static version identifier information into autoconf-generated
+# `configure' for source-code tracking purposes.
+#
+AC_REVISION($Revision: 1.1.1.1 $)
+
+#
+# AC_CONFIG_AUX_DIR (DIR)
+#
+# Use the auxiliary build tools (e.g., `install-sh', `config.sub',
+# `config.guess', etc.) that are in directory DIR.
+#
+AC_CONFIG_AUX_DIR(cfgaux)
+
+############################################################ OPTIONS
+
+#
+# Options that can be enabled/disabled by `./configure'
+#
+# AC_ARG_ENABLE(FEATURE, HELP-STR, [ACTION-IF-GIVEN], [ACTION-IF-NOT-GIVEN])
+# AC_ARG_WITH(PACKAGE, HELP-STR, [ACTION-IF-GIVEN], [ACTION-IF-NOT-GIVEN])
+#
+AC_ARG_ENABLE(isohybrid,
+	AS_HELP_STRING(
+		[--disable-isohybrid],
+		[do not compile/use ISO-9660 post-processor]),
+	[ISOHYBRID=0],
+	[ISOHYBRID=1])
+AC_ARG_WITH(isohybrid,
+	AS_HELP_STRING(
+		[--with-isohybrid=PATH],
+		[path to isohybrid.pl (Default: dep/isohybrid.pl)]),
+	[WITH_ISOHYBRID=$withval],
+	[WITH_ISOHYBRID=dep/isohybrid.pl])
+
+############################################################ TESTS
+
+#
+# Compute the canonical host-system type variable (`host') and its three
+# individual parts `host_cpu', `host_vendor', and `host_os'.
+#
+AC_CANONICAL_HOST
+
+#
+# Generic program and file checks
+#
+# AC_PATH_PROG (VARIABLE, PROG-TO-CHECK-FOR, [VALUE-IF-NOT-FOUND], [PATH])
+# 	Sets VARIABLE to the entire path of PROG-TO-CHECK-FOR if found.
+#
+AC_PATH_PROG(FALSE,		false,		/usr/bin/false	)
+AC_PATH_PROG(AWK,		awk,		$FALSE			)
+AC_PATH_PROG(CP,		cp,			$FALSE			)
+AC_PATH_PROG(FIND,		find,		$FALSE			)
+AC_PATH_PROG(LN,		ln,			$CP				)
+AC_PATH_PROG(MKDIR,		mkdir,		$FALSE			)
+AC_PATH_PROG(MKISOFS,	mkisofs,	$FALSE			)
+AC_PATH_PROG(MV,		mv,			$CP				)
+AC_PATH_PROG(RM,		rm,			$FALSE			)
+AC_PATH_PROG(SED,		sed,		$FALSE			)
+AC_PATH_PROG(SH,		sh,			/bin/sh			)
+
+############################################################ OUTPUTS
+
+#
+# AC_SUBST (VARIABLE, [VALUE])
+#
+# Create an output variable from a shell variable. Make `AC_OUTPUT' substitute
+# the variable VARIABLE into output files (typically one or more `Makefile's).
+# This means that `AC_OUTPUT' will replace instances of `@VARIABLE@' in input
+# files with the value that the shell variable VARIABLE has when `AC_OUTPUT' is
+# called. This value of VARIABLE should not contain literal newlines.
+#
+AC_SUBST(ISOHYBRID)
+AC_SUBST(WITH_ISOHYBRID)
+
+#
+# AC_CONFIG_FILES (TAG, [COMMANDS], [INIT-CMDS])
+#
+# List of files to instantiate.
+#
+AC_CONFIG_FILES(GNUmakefile)
+
+#
+# Generate/launch `config.status' (which in-turn generates makefiles, etc).
+#
+AC_OUTPUT
+
+################################################################################
+# END
+################################################################################
+#
+# $Header: /cvsroot/druidbsd/druidbsd/druidbsd/configure.in,v 1.1.1.1 2010/09/15 20:36:04 devinteske Exp $
+#
+# $Copyright: 2010 Devin Teske. All rights reserved. $
+#
+# $Log: configure.in,v $
+# Revision 1.1.1.1  2010/09/15 20:36:04  devinteske
+# Initial import of project.
+#
+#
+################################################################################

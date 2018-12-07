@@ -1,0 +1,177 @@
+--- usr.sbin/sysinstall/install.c.orig	2010-06-13 19:09:06.000000000 -0700
++++ usr.sbin/sysinstall/install.c	2010-08-25 19:42:25.000000000 -0700
+@@ -295,20 +295,38 @@ installInitial(void)
+ 	return DITEM_FAILURE;
+     }
+ 
+-    if (!Restarting && chroot("/mnt") == -1) {
++    /*
++     * For DEVICE_TYPE_NULLFS, we must let the DEVICE_INIT routine perform
++     * chroot(2) because the mount(2) call would otherwise fail.
++     */
++    if (!Restarting
++        && mediaDevice->type != DEVICE_TYPE_NULLFS
++        && chroot("/mnt") == -1)
++    {
+ 	msgConfirm("installInitial: Unable to chroot to %s - this is bad!",
+ 		   "/mnt");
+ 	return DITEM_FAILURE;
+     }
+ 
+     chdir("/");
+-    variable_set2(RUNNING_ON_ROOT, "yes", 0);
+-
+-    /* Configure various files in /etc */
+-    if (DITEM_STATUS(configResolv(NULL)) == DITEM_FAILURE)
+-	status = DITEM_FAILURE;
+-    if (DITEM_STATUS(configFstab(NULL)) == DITEM_FAILURE)
+-	status = DITEM_FAILURE;
++    /*
++     * The below routines are agnostic to effective root and therefore need
++     * to be protracted until chroot(2) can be performed.
++     *
++     * When mediaDevice is DEVICE_TYPE_NULLFS, we will not have performed
++     * chroot(2) until DEVICE_INIT later. At the DEVICE_INIT stage is where
++     * we will re-call these after performing chroot(2).
++     */
++    if (mediaDevice->type != DEVICE_TYPE_NULLFS)
++    {
++	variable_set2(RUNNING_ON_ROOT, "yes", 0);
++
++	/* Configure various files in /etc */
++	if (DITEM_STATUS(configResolv(NULL)) == DITEM_FAILURE)
++	    status = DITEM_FAILURE;
++	if (DITEM_STATUS(configFstab(NULL)) == DITEM_FAILURE)
++	    status = DITEM_FAILURE;
++    }
+ 
+     /* stick a helpful shell over on the 4th VTY */
+     if (!variable_get(VAR_NO_HOLOSHELL))
+@@ -511,7 +529,7 @@ fixit_common(void)
+ 	/* use the .profile from the fixit medium */
+ 	setenv("HOME", "/mnt2", 1);
+ 	chdir("/mnt2");
+-	execlp("sh", "-sh", (char *)0);
++	execlp(xarchInstall() ? "/stand/sh" : "sh", "-sh", (char *)0);
+ 	msgDebug("fixit shell: Failed to execute shell!\n");
+ 	_exit(1);;
+     }
+@@ -732,7 +750,7 @@ nodisks:
+ 
+     dialog_clear_norefresh();
+     if (!msgYesNo("Would you like to set this machine's time zone now?"))
+-	systemExecute("tzsetup");
++	systemExecute(xarchInstall() ? "/stand/tzsetup" : "tzsetup");
+ 
+ #ifdef WITH_MICE
+     dialog_clear_norefresh();
+@@ -768,7 +786,7 @@ nodisks:
+ 
+     msgConfirm("Now you must set the system manager's password.\n"
+ 	       "This is the password you'll use to log in as \"root\".");
+-    if (!systemExecute("passwd root"))
++    if (!systemExecute(xarchInstall() ? "/stand/passwd root" : "passwd root"))
+ 	variable_set2("root_password", "YES", 0);
+ 
+     /* XXX Put whatever other nice configuration questions you'd like to ask the user here XXX */
+@@ -901,25 +919,26 @@ installFixupBase(dialogMenuItem *self)
+ 	
+ 	/* BOGON #4: /compat created by default in root fs */
+ 	Mkdir("/usr/compat");
+-	vsystem("ln -s usr/compat /compat");
++	vsystem("%sln -s usr/compat /compat", xarchInstall() ? "/stand/" : "");
+ 
+ 	/* BOGON #5: aliases database not built for bin */
+-	vsystem("newaliases");
++	vsystem("%snewaliases", xarchInstall() ? "/stand/" : "");
+ 
+-	/* BOGON #6: Remove /stand (finally) */
+-	vsystem("rm -rf /stand");
++	/* BOGON #6: Remove /stand (unless installing xarch) */
++	if (!xarchInstall())
++	    vsystem("rm -rf /stand");
+ 
+ 	/* Now run all the mtree stuff to fix things up */
+-        vsystem("mtree -deU -f /etc/mtree/BSD.root.dist -p /");
+-        vsystem("mtree -deU -f /etc/mtree/BSD.var.dist -p /var");
+-        vsystem("mtree -deU -f /etc/mtree/BSD.usr.dist -p /usr");
++        vsystem("%smtree -deU -f /etc/mtree/BSD.root.dist -p /", xarchInstall() ? "/stand/" : "");
++        vsystem("%smtree -deU -f /etc/mtree/BSD.var.dist -p /var", xarchInstall() ? "/stand/" : "");
++        vsystem("%smtree -deU -f /etc/mtree/BSD.usr.dist -p /usr", xarchInstall() ? "/stand/" : "");
+ 
+ #ifdef __ia64__
+ 	/* Move /boot to the the EFI partition and make /boot a link to it. */
+ 	efi_mntpt = (EfiChunk != NULL) ? ((PartInfo *)EfiChunk->private_data)->mountpoint : NULL;
+ 	if (efi_mntpt != NULL) {
+-		vsystem("if [ ! -L /boot ]; then mv /boot %s; fi", efi_mntpt);
+-		vsystem("if [ ! -e /boot ]; then ln -sf %s/boot /boot; fi",
++		vsystem("if [ ! -L /boot ]; then %smv /boot %s; fi", xarchInstall() ? "/stand/" : "", efi_mntpt);
++		vsystem("if [ ! -e /boot ]; then %sln -sf %s/boot /boot; fi", xarchInstall() ? "/stand/" : "",
+ 		    efi_mntpt + 1);	/* Skip leading '/' */
+ 		/* Make sure the kernel knows which partition is the root file system. */
+ 		vsystem("echo 'vfs.root.mountfrom=\"ufs:/dev/%s\"' >> /boot/loader.conf", RootChunk->name);
+@@ -946,13 +965,13 @@ installFixupKernel(dialogMenuItem *self,
+ 	 * NB: we assume any existing kernel has been saved
+ 	 *     already and the /boot/kernel we remove is empty.
+ 	 */
+-	vsystem("rm -rf /boot/kernel");
++	vsystem("%srm -rf /boot/kernel", xarchInstall() ? "/stand/" : "");
+ #if WITH_SMP
+ 	if (dists & DIST_KERNEL_SMP)
+-		vsystem("mv /boot/SMP /boot/kernel");
++		vsystem("%smv /boot/SMP /boot/kernel", xarchInstall() ? "/stand/" : "");
+ 	else
+ #endif
+-		vsystem("mv /boot/GENERIC /boot/kernel");
++		vsystem("%smv /boot/GENERIC /boot/kernel", xarchInstall() ? "/stand/" : "");
+     }
+     return DITEM_SUCCESS | DITEM_RESTORE;
+ }
+@@ -967,7 +986,8 @@ performNewfs(PartInfo *pi, char *dname, 
+ 	if (pi->do_newfs) {
+ 		switch(pi->newfs_type) {
+ 		case NEWFS_UFS:
+-			snprintf(buffer, LINE_MAX, "%s %s %s %s %s",
++			snprintf(buffer, LINE_MAX, "%s%s %s %s %s %s",
++			    xarchInstall() ? "/stand/" : "",
+ 			    NEWFS_UFS_CMD,
+ 			    pi->newfs_data.newfs_ufs.softupdates ?  "-U" : "",
+ 			    pi->newfs_data.newfs_ufs.ufs1 ? "-O1" : "-O2",
+@@ -1071,7 +1091,7 @@ installFilesystems(dialogMenuItem *self)
+ 	    }
+ 	    dialog_clear_norefresh();
+ 	    msgNotify("Checking integrity of existing %s filesystem.", dname);
+-	    i = vsystem("fsck_ffs -y %s", dname);
++	    i = vsystem("%sfsck_ffs -y %s", xarchInstall() ? "/stand/" : "", dname);
+ 	    if (i)
+ 		msgConfirm("Warning: fsck returned status of %d for %s.\n"
+ 			   "This partition may be unsafe to use.", i, dname);
+@@ -1083,7 +1103,7 @@ installFilesystems(dialogMenuItem *self)
+ 	 */
+ 	if (!root->do_newfs && root->newfs_type == NEWFS_UFS &&
+ 	    root->newfs_data.newfs_ufs.softupdates) {
+-		i = vsystem("tunefs -n enable %s", dname);
++		i = vsystem("%stunefs -n enable %s", xarchInstall() ? "/stand/" : "", dname);
+ 		if (i)
+ 			msgConfirm("Warning: Unable to enable soft updates"
+ 			    " for root file system on %s", dname);
+@@ -1283,16 +1303,16 @@ copySelf(void)
+     int i;
+ 
+     if (file_readable("/boot.help"))
+-	vsystem("cp /boot.help /mnt");
++	vsystem("%scp /boot.help /mnt", xarchInstall() ? "/stand/" : "");
+     msgWeHaveOutput("Copying the boot floppy to /stand on root filesystem");
+-    i = vsystem("find -x /stand | cpio %s -pdum /mnt", cpioVerbosity());
++    i = vsystem("%sfind -x /stand | %scpio %s -pdum /mnt", xarchInstall() ? "/stand/" : "", xarchInstall() ? "/stand/" : "", cpioVerbosity());
+     if (i) {
+ 	msgConfirm("Copy returned error status of %d!", i);
+ 	return FALSE;
+     }
+ 
+     /* Copy the /etc files into their rightful place */
+-    if (vsystem("cd /mnt/stand; find etc | cpio %s -pdum /mnt", cpioVerbosity())) {
++    if (vsystem("cd /mnt/stand; %sfind etc | %scpio %s -pdum /mnt", xarchInstall() ? "/stand/" : "", xarchInstall() ? "/stand/" : "", cpioVerbosity())) {
+ 	msgConfirm("Couldn't copy up the /etc files!");
+ 	return TRUE;
+     }

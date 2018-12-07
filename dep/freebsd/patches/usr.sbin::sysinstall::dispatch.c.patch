@@ -1,0 +1,18 @@
+--- usr.sbin/sysinstall/dispatch.c.orig	2010-03-25 06:57:16.000000000 -0700
++++ usr.sbin/sysinstall/dispatch.c	2010-07-31 22:38:15.000000000 -0700
+@@ -61,6 +61,7 @@ static struct _word {
+     { "configPCNFSD",		configPCNFSD		},
+     { "configPackages",		configPackages		},
+     { "configUsers",		configUsers		},
++    { "configRC",		configRC		},
+ #ifdef WITH_SLICES
+     { "diskPartitionEditor",	diskPartitionEditor	},
+ #endif
+@@ -105,6 +106,7 @@ static struct _word {
+     { "mediaSetHTTP",		mediaSetHTTP		},
+     { "mediaSetUFS",		mediaSetUFS		},
+     { "mediaSetNFS",		mediaSetNFS		},
++    { "mediaSetNullFS",		mediaSetNullFS		},
+     { "mediaSetFTPUserPass",	mediaSetFTPUserPass	},
+     { "mediaSetCPIOVerbosity",	mediaSetCPIOVerbosity	},
+     { "mediaGetType",		mediaGetType		},

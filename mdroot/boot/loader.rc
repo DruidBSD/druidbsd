@@ -1,0 +1,13 @@
+\ $Header: /cvsroot/druidbsd/druidbsd/druidbsd/mdroot/boot/loader.rc,v 1.1.1.1 2010/09/15 20:36:27 devinteske Exp $
+
+\ Prevent automatic booting (if a script prematurely exits, we want to drop to
+\ the loader prompt rather than booting)
+set autoboot_delay=NO
+
+\ Delay the launching of the menu (for debug purposes)
+echo "Loading PXE Menu"
+include boot/include/dc_execute.4th
+set dc_command="include boot/menu.rc"
+set dc_seconds=2
+set dc_showdots
+dc_execute

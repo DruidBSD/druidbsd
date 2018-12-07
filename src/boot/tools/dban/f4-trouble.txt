@@ -1,0 +1,19 @@
+8f87
+ Darik's Boot and Nuke: Troubleshooting Commands
+ อออออออออออออออออออออออออออออออออออออออออออออออ
+
+  Try these boot commands if DBAN hangs at the black boot screen:
+
+    nofloppy  Start without loading the floppy driver. This allows DBAN to
+              run on most problematic laptop computers.
+
+    noverify  Run a write-only wipe. Try this boot command if you know that
+              this computer has a bad disk in it.
+
+  Read http://www.dban.org/faq/ before making a support request, and attach
+  the DBAN log file (dban0000.tgz) if DBAN fails in any way. DBAN cannot
+  write log files to USB floppy drives.
+
+  Press the 8fF587 key to read about RAID devices.
+  Press the 8fENTER87 key to continue.
+

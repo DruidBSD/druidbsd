@@ -1,0 +1,33 @@
+$Header: /cvsroot/druidbsd/druidbsd/druidbsd/doc/TODO,v 1.2 2010/10/24 21:42:34 devinteske Exp $
+
+TODO (must be completed before 1.0 can be released to field):
+- Add documentation on how to write ISO to USB flash media.
+- In the FreeBSD boot-loader, get "ACPI Support" option working (or remove it)
+  (compare to FreeBSD8 boot-loader to see if they also are failing to load the
+  module on-condition properly)
+
+TODO (eventually):
+- Rewrite `make dev' process to -- instead of using `find' to locate files that
+  need to be moved-back after a successful compile, create an index file that
+  lists all the `*.dev' elements that were relocated during the compile. This
+  means more-accurate handling of `*.dev' files when either (a) the build
+  process fails before completion (leaving `*.dev' files where they shouldn't
+  be), or (b) when no corresponding normal file exists for a given `*.dev' file
+  (meaning that no `*.old' file exists, causing our `find' to miss the
+  previously relocated `*.dev' file).
+- Cleanup `dep/freebsd/mfsroot/src/etc/sh.subr' in the following ways:
+  1) Add the following ANSI color codes (see qdetail):
+       ANSI_{UND,INV} = ^[[{4,7}m
+       ANSI_{BLD,UND,INV}_OFF = ^[[{22,24,27}m
+       ANSI_NRM = ^[[39m
+       ANSI_{BLK,RED,GRN,YEL,BLU,MAG,CYN,WHT,NRM}_BG = ^[[{40-47,49}m
+  2) Remove curlies (${}) from standard parameter expansion cases
+  3) Update print_{bold,red,green}() to use only the first argument as the
+     format if additional arguments are supplied. 
+  4) Rewrite eval_spin() to no longer rely on procfs (see eval_spin2).
+  5) Rewrite print_word() to preserve leading and/or trailing whitespace in
+     positional arguments (see eval_spin2).
+  6) Teach copy_directory about stat(1) for copying permissions (see sysrc).
+- Cleanup `dep/freebsd/mfsroot/src/etc/rc' in the following ways:
+  1) Remove dependency-checks for `/proc'
+  2) Remove mounting of proc filesystem

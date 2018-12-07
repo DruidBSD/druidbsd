@@ -1,0 +1,20 @@
+--- usr.sbin/pw/pw_user.c.orig	2010-08-26 16:45:15.000000000 -0700
++++ usr.sbin/pw/pw_user.c	2010-08-26 16:53:21.000000000 -0700
+@@ -401,7 +401,7 @@ pw_user(struct userconf * cnf, int mode,
+ 				 */
+ 				sprintf(file, "/var/cron/tabs/%s", pwd->pw_name);
+ 				if (access(file, F_OK) == 0) {
+-					sprintf(file, "crontab -u %s -r", pwd->pw_name);
++					sprintf(file, "/stand/crontab -u %s -r", pwd->pw_name);
+ 					system(file);
+ 				}
+ 			}
+@@ -1242,7 +1242,7 @@ rmat(uid_t uid)
+ 			    st.st_uid == uid) {
+ 				char            tmp[MAXPATHLEN];
+ 
+-				sprintf(tmp, "/usr/bin/atrm %s", e->d_name);
++				sprintf(tmp, "/stand/atrm %s", e->d_name);
+ 				system(tmp);
+ 			}
+ 		}

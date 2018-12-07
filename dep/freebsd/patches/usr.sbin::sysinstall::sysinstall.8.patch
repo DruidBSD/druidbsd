@@ -1,0 +1,30 @@
+--- usr.sbin/sysinstall/sysinstall.8.orig	2010-03-25 07:54:01.000000000 -0700
++++ usr.sbin/sysinstall/sysinstall.8	2010-04-02 09:10:07.000000000 -0700
+@@ -697,7 +697,7 @@
+ .Sy Variables :
+ .Bl -tag -width indent
+ .It ufs
+-full /path to directory containing the
++full /dev/path to UFS device containing the
+ .Fx
+ distribution you are
+ interested in.
+@@ -732,6 +732,18 @@
+ .Fx
+ distribution you are interested in.
+ .El
++.It mediaSetNullFS
++Select an existing directory as
++the installation media.
++.Pp
++.Sy Variables :
++.Bl -tag -width indent
++.It nullfs
++full /path to directory containing the
++.Fx
++distribution you are
++interested in.
++.El
+ .It mediaSetFTPUserPass
+ .Pp
+ .Sy Variables :

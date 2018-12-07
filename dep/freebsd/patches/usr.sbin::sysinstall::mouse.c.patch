@@ -1,0 +1,49 @@
+--- usr.sbin/sysinstall/mouse.c.orig	2010-08-24 06:56:48.000000000 -0700
++++ usr.sbin/sysinstall/mouse.c	2010-08-25 19:45:03.000000000 -0700
+@@ -52,24 +52,28 @@ mousedTest(dialogMenuItem *self)
+ 
+ 	msgNotify("Trying to start the mouse daemon...");
+ 	if (file_readable("/var/run/moused.pid"))
+-	    vsystem("kill `cat /var/run/moused.pid`");
+-	systemExecute("vidcontrol -m on");
++	    vsystem("%skill `%scat /var/run/moused.pid`",
++		xarchInstall() ? "/stand/" : "",
++		xarchInstall() ? "/stand/" : "");
++	systemExecute(xarchInstall() ? "/stand/vidcontrol -m on" : "vidcontrol -m on");
+ 	if (flags != NULL)
+-	    vsystem("moused -t %s -p %s %s", type, port, flags);
++	    vsystem("%smoused -t %s -p %s %s", xarchInstall() ? "/stand/" : "", type, port, flags);
+ 	else
+-	    vsystem("moused -t %s -p %s", type, port);
++	    vsystem("%smoused -t %s -p %s", xarchInstall() ? "/stand/" : "", type, port);
+ 
+ 	ret = msgYesNo("Now move the mouse and see if it works.\n"
+ 	      "(Note that buttons don't have any effect for now.)\n\n"
+ 	      "         Is the mouse cursor moving?\n");
+-	systemExecute("vidcontrol -m off");
++	systemExecute(xarchInstall() ? "/stand/vidcontrol -m off" : "vidcontrol -m off");
+ 	if (ret) {
+ 		if (file_readable("/var/run/moused.pid"))
+-		    vsystem("kill `cat /var/run/moused.pid`");
++		    vsystem("%skill `%scat /var/run/moused.pid`",
++			xarchInstall() ? "/stand/" : "",
++			xarchInstall() ? "/stand/" : "");
+ 		variable_set2(VAR_MOUSED, "NO", 1);
+ 	} else {
+ 		variable_set2(VAR_MOUSED, "YES", 1);
+-		vsystem("ln -fs /dev/sysmouse /dev/mouse"); /* backwards compat */
++		vsystem("%sln -fs /dev/sysmouse /dev/mouse", xarchInstall() ? "/stand/" : ""); /* backwards compat */
+ 	}
+ 
+ 	return DITEM_SUCCESS | DITEM_RESTORE;
+@@ -79,7 +83,9 @@ int
+ mousedDisable(dialogMenuItem *self)
+ {
+ 	if (file_readable("/var/run/moused.pid"))
+-	    vsystem("kill `cat /var/run/moused.pid`");
++	    vsystem("%skill `%scat /var/run/moused.pid`",
++		xarchInstall() ? "/stand/" : "",
++		xarchInstall() ? "/stand/" : "");
+ 	variable_set2(VAR_MOUSED, "NO", 1);
+ 	variable_set2(VAR_MOUSED_TYPE, "NO", 1);
+ 	variable_unset(VAR_MOUSED_PORT);

@@ -1,0 +1,70 @@
+\ $Header: /cvsroot/druidbsd/druidbsd/druidbsd/mdroot/boot/menu.rc,v 1.1.1.1 2010/09/15 20:36:25 devinteske Exp $
+
+\ The path to our boot directory on disc
+set loader_boot="boot"
+
+\ Set kernel paths
+\ Set default boot kernel and root image
+set kernel_prefix="kernels/"
+set kernel[0]="GENERIC-i386-8.1p1"
+set kernel_suffix=".kgz"
+
+\ Set MFS/MD root image paths
+set root[0]="mfsroot"
+
+\ Set default boot kernel and root image
+set kernel="${kernel_prefix}${kernel[0]}${kernel_suffix}"
+set root="${root[0]}"
+
+
+
+
+\ Load Forth modules (at once)
+include ${loader_boot}/include/version.4th
+include ${loader_boot}/include/brand.4th
+include ${loader_boot}/include/beastie.4th
+include ${loader_boot}/include/menu.4th
+include ${loader_boot}/include/menu-commands.4th
+include ${loader_boot}/include/shortcuts.4th
+
+\ Customizations
+set version="DruidBSD, v1.0"
+set logo="fbsdbw"
+set blogoX=47
+set blogoY=1
+set vlogoX=1
+set vlogoY=1
+
+\ Screen prep
+clear		\ clear the screen (from `screen.4th', loaded by `menu.4th')
+print_version	\ print version string (default, bottom-right)(`version.4th')
+draw-brand	\ draw the DruidBSD logo (default, top-left)(`brand.4th')
+menu-init	\ Initialize the menu area (default values)(`menu.4th')
+draw-beastie	\ draw freebsd mascot on the right (mid-right)(`beastie.4th')
+
+
+
+\ Initialize main menu constructs (variables are read by `menu.4th')
+
+set menu_caption[1]="Boot [1m[ENTER][37m"
+set menu_command[1]="boot"
+
+set menu_caption[2]="Boot Verbose: [34;1mNO[37m"
+set toggled_text[2]="Boot Verbose: [32mYES[37m"
+set menu_command[2]="toggle_verbose"
+
+set menu_caption[3]="ACPI Support: [34;1mEnabled[37m"
+set toggled_text[3]="ACPI Support: [33mDisabled[37m"
+set menu_command[3]="toggle_acpi"
+
+set menu_caption[4]="Escape to loader prompt"
+set menu_command[4]="goto_prompt"
+
+set menu_reboot
+
+\ Enable automatic booting (after default 10-second timeout)
+set menu_timeout_command="boot"
+
+
+\ Display the main menu (function from menu.4th)
+menu-display

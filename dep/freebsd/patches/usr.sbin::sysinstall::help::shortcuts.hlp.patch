@@ -1,0 +1,27 @@
+--- usr.sbin/sysinstall/help/shortcuts.hlp.orig	2010-03-25 06:52:30.000000000 -0700
++++ usr.sbin/sysinstall/help/shortcuts.hlp	2010-04-02 08:45:40.000000000 -0700
+@@ -41,6 +41,7 @@
+ nfs_server              Configure this machine as an NFS server
+ noConfirm               Don't ask for confirmation on non-fatal errors
+ ntpDate                 Which ntp clock synchronization server to use
++nullfs                  Full /path to installation media directory
+ pcnfsd                  Install the PCNFSD package 
+ ports                   Path to the ports collection
+ releaseName             Which FreeBSD release to install
+@@ -50,7 +51,7 @@
+ slowEthernetCard        PC ethernet card is uncommonly slow
+ swapSize                Size of the swap partition to create for Auto
+ tapeBlocksize           Tape size in blocks
+-ufs                     Full path to UFS media directory
++ufs                     Full /dev/path to UFS media device
+ usrSize                 Size of the /usr partition to create for Auto
+ varSize                 Size of the /var partition to create for Auto
+ 
+@@ -95,6 +96,7 @@
+ mediaSetFloppy          Select floppy media
+ mediaSetHTTP            Select FTP media via HTTP proxy
+ mediaSetNFS             Select NFS media
++mediaSetNullFS          Select NullFS media
+ mediaSetTape            Select tape media
+ mediaSetUFS             Select UFS media
+ optionsEditor           Go to options editor

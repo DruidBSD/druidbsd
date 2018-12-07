@@ -1,0 +1,110 @@
+#!/bin/sh
+# -*- tab-width:  4 -*- ;; Emacs
+# vi: set tabstop=4     :: Vi/ViM
+############################################################ CONFIGURATION
+
+# Whether to use ANSI color or not
+export ANSI_COLOR=YES
+
+# ISO9660 Volume ID/Label of our boot device (DO NOT CHANGE!!)
+export VOLID=druid
+
+# Local mount point to use when mounting the boot media
+export cd_mount_point=/cdrom
+
+# Path to our rescue directory
+export rescue="${cd_mount_point}/freebsd/rescue"
+
+############################################################ FUNCTIONS
+
+# Grab external function declarations
+include="/etc/sh.subr"
+[ ! -f "${include}" ] \
+	&& echo "No such file or directory \`${include}'" \
+	&& while true; do sleep 10; done
+. "${include}"
+#Functions Included (from above):
+#	die([err_msg [err_type]])		//Abrubtly terminate due to an error
+#	task_begin([caption])			//Inform user that you have started a task
+#	task_end([exit_status])			//End running task and display exit status
+#	die_if_missing(path [msg [t]])	//Make sure that a file/directory exists
+#	eval_spin(command [args ...])	//Execute command w/ spinner
+
+############################################################ MAIN SOURCE
+
+echo -n "Sleeping 5 seconds for device discovery..."
+sleep 5
+echo
+
+############################## Perform Initialization routines
+
+# Check all custom mfsroot abilities
+task_begin "Verifying execution environment sanity..."
+die_if_missing "/bin/sleep"
+die_if_missing "/bin/sed"
+die_if_missing "/proc"
+die_if_missing "/sbin/mount"
+die_if_missing "/sbin/mount_cd9660"
+die_if_missing "/tmp"
+task_end ${SUCCESS}
+
+############################## Mount proc filesystem on `/proc'
+task_begin "Mounting proc filesystem on \`/proc'..."
+if [ ! -e "/proc/curproc" ]; then
+	mount -t procfs proc /proc \
+		|| die "Could not mount proc filesystem on \`/proc'" "FATAL ERROR"
+fi
+task_end ${SUCCESS}
+
+############################## Mount the media that we booted from
+task_begin "Mounting ISO9660 filesystem on \`${cd_mount_point}'..."
+if [ ! -f "${cd_mount_point}/version.inf" ]; then
+	# Attempt to mount /dev/iso9660/VOLID
+	eval_spin mount_cd9660 "/dev/iso9660/${VOLID}" "${cd_mount_point}"
+	if [ $? -eq ${SUCCESS} ]; then
+		if [ ! -f "${cd_mount_point}/version.inf" ]; then
+			# We have mounted the wrong CD/DVD-ROM!
+			die "Invalid installation source" "WRONG DISC"
+		fi
+	else
+		die "Could not mount ISO9660 filesystem" "DRIVER PROBLEM"
+	fi
+fi
+task_end ${SUCCESS}
+
+############################## Bootstrap execution environment
+task_begin "Bootstrapping execution environment..."
+
+[ -d "$rescue" ] || rescue="/cdrom/rescue"
+
+# Modify LD_LIBRARY_PATH to include rescue lib directory
+unset de
+while [ "${de=${LD_LIBRARY_PATH}:}" ]; do
+	[ "${de%%:*}" = "${rescue}/lib" ] && break
+	de="${de#*:}"
+done
+[ "${de}" ] || export \
+LD_LIBRARY_PATH="${LD_LIBRARY_PATH}${LD_LIBRARY_PATH:+:}${rescue}/lib"
+unset de
+
+# Initialize ELF binary support
+/stand/mkdir -p /libexec
+/stand/ln -sf "${rescue}/libexec/ld-elf.so.1" /libexec/
+
+# Generate library hints
+/stand/ldconfig "${rescue}/lib"
+
+task_end ${SUCCESS}
+
+############################## Start an instance of the custom install menu
+echo -n "${ANSI_BLD}Launching interactive shell session...${ANSI_NON}"
+sleep 1.5 && echo && echo
+${rescue}/bash --noprofile --rcfile ${rescue}/etc/profile -i
+
+################################################################################
+#
+# $Header: /cvsroot/druidbsd/druidbsd/druidbsd/dep/freebsd/mfsroot/src/etc/rc,v 1.1.1.1 2010/09/15 20:36:23 devinteske Exp $
+#
+# $Copyright: 2010 Devin Teske. All rights reserved. $
+#
+################################################################################

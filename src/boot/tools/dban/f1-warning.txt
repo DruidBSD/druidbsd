@@ -1,0 +1,20 @@
+8f87
+ Darik's Boot and Nuke
+ อออออออออออออออออออออ
+
+  8cWarning:87 This software irrecoverably destroys data.
+
+  This software is provided without any warranty; without even the implied
+  warranty of merchantability or fitness for a particular purpose. In no
+  event shall the software authors or contributors be liable for any damages
+  arising from the use of this software.  This software is provided "as is".
+
+  http://www.dban.org/
+
+  * Press the 8fF287 key to learn about DBAN.
+  * Press the 8fF387 key for a list of quick commands.
+  * Press the 8fF487 key for troubleshooting hints.
+  * Press the 8fF587 key to read about RAID devices.
+
+  Press the 8fENTER87 key to continue.
+

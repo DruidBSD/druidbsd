@@ -1,0 +1,2 @@
+Press ENTER to boot from CD...
+

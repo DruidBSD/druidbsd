@@ -1,0 +1,66 @@
+--- usr.sbin/sysinstall/sysinstall.h.orig	2010-06-13 19:09:06.000000000 -0700
++++ usr.sbin/sysinstall/sysinstall.h	2010-08-25 20:17:55.000000000 -0700
+@@ -165,6 +165,7 @@
+ #define VAR_NO_HOME			"noHome"
+ #define VAR_NONINTERACTIVE		"nonInteractive"
+ #define VAR_NOVELL			"novell"
++#define VAR_NULLFS_PATH			"nullfs"
+ #define	VAR_RPCBIND_ENABLE		"rpcbind_enable"
+ #define VAR_NTPDATE_FLAGS		"ntpdate_flags"
+ #define VAR_PACKAGE			"package"
+@@ -193,6 +194,7 @@
+ #define VAR_TERM			"TERM"
+ #define VAR_CONSTERM                    "_consterm"
+ #define VAR_KEEPRCCONF			"keeprcconf"
++#define VAR_XARCH_INSTALL		"xarchInstall"
+ 
+ #ifdef PC98
+ #define DEFAULT_COUNTRY		"jp"
+@@ -278,6 +280,7 @@ typedef enum {
+     DEVICE_TYPE_NFS,
+     DEVICE_TYPE_ANY,
+     DEVICE_TYPE_HTTP,
++    DEVICE_TYPE_NULLFS,
+ } DeviceType;
+ 
+ /* CDROM mount codes */
+@@ -522,9 +525,11 @@ extern void	configRC_conf(void);
+ extern int	configFstab(dialogMenuItem *self);
+ extern int	configRC(dialogMenuItem *self);
+ extern int	configResolv(dialogMenuItem *self);
++extern int	configRootPasswd(dialogMenuItem *self);
+ extern int	configPackages(dialogMenuItem *self);
+ extern int	configSaver(dialogMenuItem *self);
+ extern int	configSaverTimeout(dialogMenuItem *self);
++extern int	configTimeZone(dialogMenuItem *self);
+ #ifdef WITH_LINUX
+ extern int	configLinux(dialogMenuItem *self);
+ #endif
+@@ -733,6 +738,7 @@ extern int	mediaSetFTPPassive(dialogMenu
+ extern int	mediaSetHTTP(dialogMenuItem *self);
+ extern int	mediaSetUFS(dialogMenuItem *self);
+ extern int	mediaSetNFS(dialogMenuItem *self);
++extern int	mediaSetNullFS(dialogMenuItem *self);
+ extern int	mediaSetFTPUserPass(dialogMenuItem *self);
+ extern int	mediaSetCPIOVerbosity(dialogMenuItem *self);
+ extern int	mediaGetType(dialogMenuItem *self);
+@@ -792,6 +798,7 @@ extern int	biosmptable_detect(void);
+ 
+ /* msg.c */
+ extern Boolean	isDebug(void);
++extern Boolean	xarchInstall(void);
+ extern void	msgInfo(char *fmt, ...) __printf0like(1, 2);
+ extern void	msgYap(char *fmt, ...) __printflike(1, 2);
+ extern void	msgWarn(char *fmt, ...) __printflike(1, 2);
+@@ -816,6 +823,11 @@ extern Boolean	mediaInitNFS(Device *dev)
+ extern FILE	*mediaGetNFS(Device *dev, char *file, Boolean probe);
+ extern void	mediaShutdownNFS(Device *dev);
+ 
++/* nullfs.c */
++extern void	mediaShutdownNullFS(Device *dev);
++extern Boolean	mediaInitNullFS(Device *dev);
++extern FILE	*mediaGetNullFS(Device *dev, char *file, Boolean probe);
++
+ /* options.c */
+ extern int	optionsEditor(dialogMenuItem *self);
+ 

@@ -1,0 +1,11 @@
+--- usr.sbin/sysinstall/package.c.orig	2010-08-24 07:13:06.000000000 -0700
++++ usr.sbin/sysinstall/package.c	2010-08-27 06:46:47.000000000 -0700
+@@ -139,7 +139,7 @@ package_extract(Device *dev, char *name,
+ 
+     /* If necessary, initialize the ldconfig hints */
+     if (!file_readable("/var/run/ld-elf.so.hints"))
+-	vsystem("ldconfig /usr/lib /usr/lib/compat /usr/local/lib");
++	vsystem("ldconfig /usr/lib /usr/lib/compat /usr/local/lib /lib");
+ 
+     /* Be initially optimistic */
+     ret = DITEM_SUCCESS;

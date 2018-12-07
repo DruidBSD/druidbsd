@@ -1,0 +1,139 @@
+--- usr.sbin/sysinstall/installUpgrade.c.orig	2010-08-24 05:47:05.000000000 -0700
++++ usr.sbin/sysinstall/installUpgrade.c	2010-08-25 19:18:20.000000000 -0700
+@@ -135,7 +135,7 @@ static HitList etc_files [] = {
+ static void
+ traverseHitlist(HitList *h)
+ {
+-    system("rm -rf /etc/upgrade");
++    vsystem("%srm -rf /etc/upgrade", xarchInstall() ? "/stand/" : "");
+     Mkdir("/etc/upgrade");
+     while (h->name) {
+ 	if (!file_readable(h->name)) {
+@@ -146,12 +146,12 @@ traverseHitlist(HitList *h)
+ 	else {
+ 	    if (h->action == JUST_COPY) {
+ 		/* Move the just-loaded copy aside */
+-		vsystem("mv /etc/%s /etc/upgrade/%s", h->name, h->name);
++		vsystem("%smv /etc/%s /etc/upgrade/%s", xarchInstall() ? "/stand/" : "", h->name, h->name);
+ 
+ 		/* Copy the old one into its place */
+ 		msgNotify("Resurrecting %s..", h->name);
+ 		/* Do this with tar so that symlinks and such are preserved */
+-		if (vsystem("tar cf - %s | tar xpf - -C /etc", h->name))
++		if (vsystem("%star cf - %s | %star xpf - -C /etc", xarchInstall() ? "/stand/" : "", h->name, xarchInstall() ? "/stand/" : ""))
+ 		    msgConfirm("Unable to resurrect your old /etc/%s!  Hmmmm.", h->name);
+ 	    }
+ 	    else /* call handler */
+@@ -245,7 +245,7 @@ installUpgrade(dialogMenuItem *self)
+ 	}
+ 
+ 	msgNotify("Updating /stand on root filesystem");
+-	(void)vsystem("find -x /stand | cpio %s -pdum /mnt", cpioVerbosity());
++	(void)vsystem("%sfind -x /stand | %scpio %s -pdum /mnt", xarchInstall() ? "/stand/" : "", xarchInstall() ? "/stand/" : "", cpioVerbosity());
+ 
+ 	if (DITEM_STATUS(chroot("/mnt")) == DITEM_FAILURE) {
+ 	    msgConfirm("Unable to chroot to /mnt - something is wrong with the\n"
+@@ -288,21 +288,21 @@ installUpgrade(dialogMenuItem *self)
+ 
+ 	if (saved_etc[0]) {
+ 	    msgNotify("Preserving /etc directory..");
+-	    if (vsystem("tar -cBpf - -C /etc . | tar --unlink -xBpf - -C %s", saved_etc))
++	    if (vsystem("%star -cBpf - -C /etc . | %star --unlink -xBpf - -C %s", xarchInstall() ? "/stand/" : "", xarchInstall() ? "/stand/" : "", saved_etc))
+ 		if (msgYesNo("Unable to backup your /etc into %s.\n"
+ 			     "Do you want to continue anyway?", saved_etc) != 0)
+ 		    return DITEM_FAILURE;
+ 	    msgNotify("Preserving /root directory..");
+-	    vsystem("tar -cBpf - -C / root | tar --unlink -xBpf - -C %s", saved_etc);
++	    vsystem("%star -cBpf - -C / root | %star --unlink -xBpf - -C %s", xarchInstall() ? "/stand/" : "", xarchInstall() ? "/stand/" : "", saved_etc);
+ 	}
+ 
+ 	msgNotify("chflags'ing old binaries - please wait.");
+-	(void)vsystem("chflags -R noschg /bin /sbin /lib /libexec /usr/bin /usr/sbin /usr/lib /usr/libexec /var/empty /boot/kernel*");
++	(void)vsystem("%schflags -R noschg /bin /sbin /lib /libexec /usr/bin /usr/sbin /usr/lib /usr/libexec /var/empty /boot/kernel*", xarchInstall() ? "/stand/" : "");
+ 
+ 	if (directory_exists("/boot/kernel")) {
+ 	    if (directory_exists("/boot/kernel.prev")) {
+ 		msgNotify("Removing /boot/kernel.prev");
+-		if (system("rm -fr /boot/kernel.prev")) {
++		if (vsystem("%srm -fr /boot/kernel.prev", xarchInstall() ? "/stand/" : "")) {
+ 		    msgConfirm("NOTICE: I'm trying to back up /boot/kernel to\n"
+ 			       "/boot/kernel.prev, but /boot/kernel.prev exists and I\n"
+ 			       "can't remove it.  This means that the backup will, in\n"
+@@ -310,7 +310,7 @@ installUpgrade(dialogMenuItem *self)
+ 		}
+ 	    }
+ 	    msgNotify("Moving old kernel to /boot/kernel.prev");
+-	    if (system("mv /boot/kernel /boot/kernel.prev")) {
++	    if (vsystem("%smv /boot/kernel /boot/kernel.prev"), xarchInstall() ? "/stand/" : "") {
+ 		if (!msgYesNo("Hmmm!  I couldn't move the old kernel over!  Do you want to\n"
+ 			      "treat this as a big problem and abort the upgrade?  Due to the\n"
+ 			      "way that this upgrade process works, you will have to reboot\n"
+@@ -363,7 +363,7 @@ media:
+     }
+ 
+     if (extractingBin)
+-	vsystem("disklabel -B `awk '$2~/\\/$/ {print substr($1, 6, 5)}' /etc/fstab`");
++	vsystem("%sdisklabel -B `%sawk '$2~/\\/$/ {print substr($1, 6, 5)}' /etc/fstab`", xarchInstall() ? "/stand/" : "", xarchInstall() ? "/stand/" : "");
+     msgNotify("First stage of upgrade completed successfully!\n\n"
+ 	       "Next comes stage 2, where we attempt to resurrect your /etc\n"
+ 	       "directory!");
+@@ -378,7 +378,9 @@ media:
+ 	/* Now try to resurrect the /etc files */
+ 	traverseHitlist(etc_files);
+ 	/* Resurrect the root dotfiles */
+-	vsystem("tar -cBpf - root | tar -xBpf - -C / && rm -rf root");
++	vsystem("%star -cBpf - root | %star -xBpf - -C / && %srm -rf root",
++	    xarchInstall() ? "/stand/" : "", xarchInstall() ? "/stand/" : "",
++	    xarchInstall() ? "/stand/" : "");
+     }
+ 
+     msgConfirm("Upgrade completed!  All of your old /etc files have been restored.\n"
+@@ -448,10 +450,10 @@ installUpgradeNonInteractive(dialogMenuI
+ 
+ 	if (extractingBin) {
+ 	    msgNotify("chflags'ing old binaries - please wait.");
+-	    (void)vsystem("chflags -R noschg /mnt/");
++	    (void)vsystem("%schflags -R noschg /mnt/", xarchInstall() ? "/stand/" : "");
+ 	}
+ 	msgNotify("Updating /stand on root filesystem");
+-	(void)vsystem("find -x /stand | cpio %s -pdum /mnt", cpioVerbosity());
++	(void)vsystem("%sfind -x /stand | %scpio %s -pdum /mnt", xarchInstall() ? "/stand/" : "", xarchInstall() ? "/stand/" : "", cpioVerbosity());
+ 
+ 	if (DITEM_STATUS(chroot("/mnt")) == DITEM_FAILURE) {
+ 	    msgConfirm("Unable to chroot to /mnt - something is wrong with the\n"
+@@ -471,7 +473,7 @@ installUpgradeNonInteractive(dialogMenuI
+     saved_etc = "/var/tmp/etc";
+     Mkdir(saved_etc);
+     msgNotify("Preserving /etc directory..");
+-    if (vsystem("tar -cpBf - -C /etc . | tar -xpBf - -C %s", saved_etc)) {
++    if (vsystem("%star -cpBf - -C /etc . | %star -xpBf - -C %s", xarchInstall() ? "/stand/" : "", xarchInstall() ? "/stand/" : "", saved_etc)) {
+ 	msgNotify("Unable to backup your /etc into %s.", saved_etc);
+ 	return DITEM_FAILURE;
+     }
+@@ -483,7 +485,7 @@ installUpgradeNonInteractive(dialogMenuI
+     if (directory_exists("/boot/kernel")) {
+ 	if (directory_exists("/boot/kernel.prev")) {
+ 	    msgNotify("Removing /boot/kernel.prev");
+-	    if (system("rm -fr /boot/kernel.prev")) {
++	    if (vsystem("%srm -fr /boot/kernel.prev"), xarchInstall() ? "/stand" : "") {
+ 		msgConfirm("NOTICE: I'm trying to back up /boot/kernel to\n"
+ 		    "/boot/kernel.prev, but /boot/kernel.prev exists and I\n"
+ 		    "can't remove it.  This means that the backup will, in\n"
+@@ -491,7 +493,7 @@ installUpgradeNonInteractive(dialogMenuI
+ 	    }
+ 	}
+ 	msgNotify("Copying old kernel to /boot/kernel.prev");
+-	vsystem("cp -Rp /boot/kernel /boot/kernel.prev");
++	vsystem("%scp -Rp /boot/kernel /boot/kernel.prev", xarchInstall() ? "/stand/" : "");
+     }   
+ 
+     msgNotify("Beginning extraction of distributions.");
+@@ -518,7 +520,7 @@ installUpgradeNonInteractive(dialogMenuI
+     }
+ 
+     msgNotify("First stage of upgrade completed successfully.");
+-    if (vsystem("tar -cpBf - -C %s . | tar --unlink -xpBf - -C /etc", saved_etc)) {
++    if (vsystem("%star -cpBf - -C %s . | %star --unlink -xpBf - -C /etc", xarchInstall() ? "/stand/" : "", saved_etc, xarchInstall() ? "/stand/" : "")) {
+ 	msgNotify("Unable to resurrect your old /etc!");
+ 	return DITEM_FAILURE;
+     }

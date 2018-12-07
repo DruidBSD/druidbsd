@@ -1,0 +1,82 @@
+--- usr.sbin/sysinstall/config.c.orig	2010-08-24 05:24:39.000000000 -0700
++++ usr.sbin/sysinstall/config.c	2010-08-25 20:27:33.000000000 -0700
+@@ -405,8 +405,9 @@ configRC_conf(void)
+ 
+     configTtys();
+     write_header = !file_readable("/etc/rc.conf");
+-    do_sort = RunningAsInit && file_readable("/usr/bin/sort") &&
+-	file_readable("/usr/bin/uniq");
++    do_sort = RunningAsInit &&
++	file_readable(xarchInstall() ? "/stant/sort" : "/usr/bin/sort") &&
++	file_readable(xarchInstall() ? "/stand/uniq" : "/usr/bin/uniq");
+     do_merge = do_sort && file_readable("/etc/rc.conf");
+ 
+     if(do_merge) {
+@@ -469,7 +470,7 @@ configRC_conf(void)
+     /* Tidy up the resulting file if it's late enough in the installation
+ 	for sort and uniq to be available */
+     if (do_sort) {
+-	(void)vsystem("sort /etc/rc.conf | uniq > /etc/rc.conf.new && mv /etc/rc.conf.new /etc/rc.conf");
++	(void)vsystem("%ssort /etc/rc.conf | %suniq > /etc/rc.conf.new && %smv /etc/rc.conf.new /etc/rc.conf", xarchInstall() ? "/stand/" : "", xarchInstall() ? "/stand/" : "", xarchInstall() ? "/stand/" : "");
+     }
+ }
+ 
+@@ -813,7 +814,7 @@ configNFSServer(dialogMenuItem *self)
+ 	WINDOW *w = savescr();
+ 
+ 	if (file_readable("/etc/exports.disabled"))
+-	    vsystem("mv /etc/exports.disabled /etc/exports");
++	    vsystem("%smv /etc/exports.disabled /etc/exports", xarchInstall() ? "/stand/" : "");
+ 	else {
+ 	    dialog_clear_norefresh();
+ 	    msgConfirm("Operating as an NFS server means that you must first configure\n"
+@@ -841,7 +842,7 @@ configNFSServer(dialogMenuItem *self)
+ 	restorescr(w);
+     }
+     else if (variable_get(VAR_NFS_SERVER)) { /* We want to turn it off again? */
+-	vsystem("mv -f /etc/exports /etc/exports.disabled");
++	vsystem("%smv -f /etc/exports /etc/exports.disabled", xarchInstall() ? "/stand/" : "");
+ 	variable_unset(VAR_NFS_SERVER);
+     }
+     return DITEM_SUCCESS | retval;
+@@ -1028,7 +1029,7 @@ configMTAExim(dialogMenuItem *self)
+     }
+ 
+     /* Update mailer.conf */
+-    vsystem("mv -f /etc/mail/mailer.conf /etc/mail/mailer.conf.old");
++    vsystem("%smv -f /etc/mail/mailer.conf /etc/mail/mailer.conf.old", xarchInstall() ? "/stand/" : "");
+     mailerconf = fopen("/etc/mail/mailer.conf", "w");
+     if (mailerconf == NULL) {
+ 	/* Not really a serious problem, so we do not abort */
+@@ -1072,3 +1073,31 @@ configMTAExim(dialogMenuItem *self)
+ 
+     return DITEM_SUCCESS;
+ }
++
++int
++configRootPasswd(dialogMenuItem *self)
++{
++    WINDOW *w = NULL;	/* Keep lint happy */
++
++    /* If aux is set, the command is known not to produce any screen-spoiling output */
++    if (!self->aux)
++	w = savescr();
++    systemExecute(xarchInstall() ? "/stand/passwd root" : "passwd root");
++    if (!self->aux)
++	restorescr(w);
++    return DITEM_SUCCESS;
++}
++
++int
++configTimeZone(dialogMenuItem *self)
++{
++    WINDOW *w = NULL;	/* Keep lint happy */
++
++    /* If aux is set, the command is known not to produce any screen-spoiling output */
++    if (!self->aux)
++	w = savescr();
++    systemExecute(xarchInstall() ? "/stand/tzsetup" : "tzsetup");
++    if (!self->aux)
++	restorescr(w);
++    return DITEM_SUCCESS;
++}

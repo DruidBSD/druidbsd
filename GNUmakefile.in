@@ -1,0 +1,543 @@
+# -*- tab-width:  4 -*- ;; Emacs
+# vi: set tabstop=4     :: Vi/ViM
+
+################################################################################
+################################# CONFIGURATION ################################
+################################################################################
+
+# Disc label(s)
+DRUID_BASENAME = Druid
+
+#
+# Version Information
+#
+# See the file `druid/doc/VERSIONING' for additional information.
+#
+VERSION_ALL      = 0.0
+VERSION_DEV      = 1.1d1
+VERSION_DRUIDBSD = 1.0b1
+VERSION_TOOLS    = 1.0
+
+# Default ISO9660 tags
+PUBLISHER = BSD
+PREPARER  = devinteske@hotmail.com
+SYSTEM_ID = x86
+
+# Target-specific preparer
+druidbsd: override PREPARER = devinteske@hotmail.com
+tools:    override PREPARER = devinteske@hotmail.com
+dev:      override PREPARER = devinteske@hotmail.com
+
+# Paths to required components
+SRCDIR = @srcdir@/src
+DEPDIR = @srcdir@/dep
+MDROOT = @srcdir@/mdroot
+
+################################################################################
+############################### GLOBAL VARIABLES ###############################
+################################################################################
+
+#
+# ISO filename definitions
+#
+ALL_ISO      = $(DRUID_BASENAME)-$(VERSION_ALL).iso
+DEV_ISO      = Dev_$(DRUID_BASENAME)-$(VERSION_DEV).iso
+DRUIDBSD_ISO = DruidBSD-$(VERSION_DRUIDBSD).iso
+TOOLS_ISO    = $(DRUID_BASENAME)_Tools-$(VERSION_TOOLS).iso
+
+#
+# Internal ISO9660 Volume ID (referenced by various incumbant
+# selectable options in re-mounting/identifying the boot media).
+#
+# DO NOT CHANGE THIS!
+#
+BOOT_VOLID   = druid
+
+#
+# Standard MKISOFS options (for building a [bootable] ISO)
+#
+ISO9660_OPTS = -U -J -r
+BOOTFILE     = boot/isolinux/isolinux.bin
+BCATALOG     = boot/isolinux/boot.catalog
+ISOBOOT_OPTS = -V $(BOOT_VOLID)		\
+               -b $(BOOTFILE)		\
+               -no-emul-boot		\
+               -c $(BCATALOG)		\
+               -boot-load-size 4	\
+               -boot-info-table
+MKISOFS_OPTS = -publisher "$(PUBLISHER)"	\
+               -p "$(PREPARER)"				\
+               -sysid "$(SYSTEM_ID)"		\
+               -m CVS -m '*.dev' -m '*.old'	\
+               -uid 0 -gid 0
+
+#
+# Standard utility pathnames
+#
+MKISOFS = @MKISOFS@
+AWK     = @AWK@
+FIND    = @FIND@
+LN      = @LN@
+MKDIR   = @MKDIR@
+MV      = @MV@
+RM      = @RM@
+SED     = @SED@
+SH      = @SH@
+
+#
+# If enabled, the completed ISO file will be post-processed using SYSLINUXs
+# isohybrid utility, allowing the ISO to be written to bootable USB storage
+# (such as a flash drive).
+#
+ISOHYBRID = @ISOHYBRID@
+
+#
+# Dependency pathnames (configurable via `--with-OPTION=path')
+#
+ISOHYBRID_PATH = @WITH_ISOHYBRID@
+
+#
+# Default options to pass to isohybrid (when enabled)
+# Override by specifying ISOHYBRID_OPTS="..." on the make(1) command-line
+#
+ISOHYBRID_OPTS = -offset 1 -h 255 -s 63
+
+################################################################################
+################################### FUNCTIONS ##################################
+################################################################################
+
+#
+# $(call appid,...)
+#
+# Convert ISO pathname into suitable ISO9660 Application ID.
+#
+appid = $(shell echo $(1) | $(SED) -e 's/.*\///;s/\.iso$$//;s/-[^-]*$$//')
+
+################################################################################
+################################ TARGET OBJECTS ################################
+################################################################################
+
+#
+# Paths to common elementes (for building MKISOFS graft-points, below)
+#
+ISOLINUX_BIN   = $(BOOTFILE)
+ISOLINUX_CFG   = boot/isolinux/isolinux.cfg
+MENU_CFG       = boot/isolinux/menu.cfg
+MEMDISK        = boot/isolinux/memdisk
+VESAMENU_C32   = boot/isolinux/vesamenu.c32
+HDT_C32        = boot/isolinux/hdt.c32
+MODULES_PCIMAP = boot/isolinux/modules.pcimap
+PCI_IDS        = boot/isolinux/pci.ids
+BOOT_DRUIDBSD  = boot/druidbsd
+BOOT_INCLUDE   = boot/include
+BOOT_OTHER     = boot/other
+BOOT_TOOLS     = boot/tools
+VERSION_INF    = version.inf
+FREEBSD_ROOT   = freebsd
+
+#
+# Common graft-points (for all builds)
+#
+ISO_OBJECTS = /$(ISOLINUX_BIN)=$(ISOLINUX_BIN)		\
+              /$(ISOLINUX_CFG)=$(ISOLINUX_CFG)		\
+              /$(BOOT_INCLUDE)=$(BOOT_INCLUDE)		\
+              /$(BOOT_OTHER)=$(BOOT_OTHER)			\
+              /$(MEMDISK)=$(MEMDISK)				\
+              /$(VESAMENU_C32)=$(VESAMENU_C32)		\
+              /$(HDT_C32)=$(HDT_C32)				\
+              /$(MODULES_PCIMAP)=$(MODULES_PCIMAP)	\
+              /$(PCI_IDS)=$(PCI_IDS)				\
+              /$(VERSION_INF)=$(VERSION_INF)
+
+#
+# FreeBSD-specific graft-points
+#
+druidbsd: override OBJECTS = -graft-points	\
+         /$(FREEBSD_ROOT)=$(FREEBSD_ROOT)	\
+         /$(BOOT_DRUIDBSD)=$(BOOT_DRUIDBSD)	\
+         /$(MENU_CFG)=$(MENU_CFG).druidbsd	\
+         $(ISO_OBJECTS)
+
+#
+# Graft-points specific to the "Tools Only" diagnostic disc
+#
+tools: override OBJECTS = -graft-points		\
+       /$(BOOT_TOOLS)=$(BOOT_TOOLS)			\
+       /$(MENU_CFG)=$(MENU_CFG).tools		\
+       $(ISO_OBJECTS)
+
+
+ifndef OBJECTS
+	#
+	# If a target-specific set of objects has not been defined,
+	# omit the use of graft-points and include everything
+	#
+	OBJECTS = .
+endif
+
+################################################################################
+############################# TARGET  DEPENDENCIES #############################
+################################################################################
+
+#
+# Standard utilities
+#
+DEPEND_DEP = $(MKISOFS)	\
+             $(AWK)		\
+             $(FIND)	\
+             $(LN)		\
+             $(MKDIR)	\
+             $(MV)		\
+             $(RM)		\
+             $(SED)		\
+             $(SH)
+
+#
+# Makefile dependencies
+#
+MAKEFILE_DEP = configure		\
+               config.status	\
+               GNUmakefile.in
+
+#
+# Core dependencies for all ISOs
+#
+ISO_DEP = $(SRCDIR)/$(BOOTFILE)						\
+          $(SRCDIR)/$(VERSION_INF)					\
+          $(SRCDIR)/boot/include/boot.msg			\
+          $(SRCDIR)/boot/include/vesamenu.jpg		\
+          $(SRCDIR)/boot/include/isolinux-menu.cfg	\
+          $(SRCDIR)/boot/isolinux/hdt.c32			\
+          $(SRCDIR)/boot/isolinux/isolinux.cfg		\
+          $(SRCDIR)/boot/isolinux/memdisk			\
+          $(SRCDIR)/boot/isolinux/modules.pcimap	\
+          $(SRCDIR)/boot/isolinux/pci.ids			\
+          $(SRCDIR)/boot/isolinux/vesamenu.c32		\
+          $(SRCDIR)/boot/other/isolinux.cfg			\
+
+#
+# Dev ISO dependencies
+#
+DEV_DEP = 
+
+#
+# DruidBSD ISO dependencies
+#
+MDROOT_ISO   = boot/druidbsd/mdroot.iso
+DRUIDBSD_DEP = $(DEPDIR)/.freebsd_package_symlinks			\
+               $(DEPDIR)/.freebsd_rescue_symlinks			\
+               $(SRCDIR)/$(MDROOT_ISO)						\
+               $(SRCDIR)/boot/druidbsd/isolinux.cfg			\
+               $(SRCDIR)/freebsd/rescue/bash				\
+               $(SRCDIR)/freebsd/rescue/etc/inetd.conf		\
+               $(SRCDIR)/freebsd/rescue/etc/profile			\
+               $(SRCDIR)/freebsd/rescue/etc/remote			\
+               $(SRCDIR)/freebsd/rescue/etc/termcap			\
+               $(SRCDIR)/freebsd/rescue/etc/units.lib		\
+               $(SRCDIR)/freebsd/rescue/growfs				\
+               $(SRCDIR)/freebsd/rescue/lib/libc.so.7		\
+               $(SRCDIR)/freebsd/rescue/lib/libiconv.so.3	\
+               $(SRCDIR)/freebsd/rescue/lib/libintl.so.9	\
+               $(SRCDIR)/freebsd/rescue/lib/libkvm.so.5		\
+               $(SRCDIR)/freebsd/rescue/lib/libncurses.so.8	\
+               $(SRCDIR)/freebsd/rescue/lib/libutil.so.8	\
+               $(SRCDIR)/freebsd/rescue/libexec/ld-elf.so.1	\
+               $(SRCDIR)/freebsd/rescue/rescue				\
+			   $(SRCDIR)/freebsd/rescue/swapadd				\
+               $(SRCDIR)/freebsd/rescue/swapctl				\
+               $(SRCDIR)/freebsd/rescue/swapinfo			\
+               $(SRCDIR)/freebsd/rescue/swapoff
+
+#
+# FreeeBSD `mdroot.iso' dependencies
+#
+MDROOT_LOADER  = boot/cdboot
+MDROOT_DEP     = $(MDROOT)/$(MDROOT_LOADER)					\
+                 $(MDROOT)/boot/loader						\
+                 $(MDROOT)/boot/include/beastie.4th			\
+                 $(MDROOT)/boot/include/brand.4th			\
+                 $(MDROOT)/boot/include/chkpasswd.4th		\
+                 $(MDROOT)/boot/include/dc_execute.4th		\
+                 $(MDROOT)/boot/include/frames.4th			\
+                 $(MDROOT)/boot/include/menu.4th			\
+                 $(MDROOT)/boot/include/menu-commands.4th	\
+                 $(MDROOT)/boot/include/screen.4th			\
+                 $(MDROOT)/boot/include/shortcuts.4th		\
+                 $(MDROOT)/boot/include/version.4th			\
+                 $(MDROOT)/boot/loader.rc					\
+                 $(MDROOT)/boot/menu.rc						\
+                 $(MDROOT)/boot/modules/acpi.ko				\
+                 $(MDROOT)/boot/modules/acpi.ko.symbols		\
+                 $(MDROOT)/boot/mfsroot.gz					\
+                 $(MDROOT)/kernels/GENERIC-i386-8.1p1.kgz
+
+#
+# Graft-points for the "Tools Only" diagnostic disc
+#
+TOOLS_DEP = $(SRCDIR)/boot/tools/dban/dban					\
+            $(SRCDIR)/boot/tools/dban/f1-warning.txt		\
+            $(SRCDIR)/boot/tools/dban/f2-about.txt			\
+            $(SRCDIR)/boot/tools/dban/f3-quick.txt			\
+            $(SRCDIR)/boot/tools/dban/f4-trouble.txt		\
+            $(SRCDIR)/boot/tools/dban/f5-raid.txt			\
+            $(SRCDIR)/boot/tools/dban/isolinux.cfg			\
+            $(SRCDIR)/boot/tools/isolinux.cfg				\
+            $(SRCDIR)/boot/tools/killdisk/isolinux.cfg		\
+            $(SRCDIR)/boot/tools/killdisk/killdisk.gz		\
+            $(SRCDIR)/boot/tools/memtest/isolinux.cfg		\
+            $(SRCDIR)/boot/tools/memtest/memtest			\
+            $(SRCDIR)/boot/tools/memtest/memtest+			\
+            $(SRCDIR)/boot/tools/memtest/memtest.smp		\
+            $(SRCDIR)/boot/tools/seatools/isolinux.cfg		\
+            $(SRCDIR)/boot/tools/seatools/seatools.gz		\
+            $(SRCDIR)/boot/tools/windiag/isolinux.cfg		\
+            $(SRCDIR)/boot/tools/windiag/windiag.gz
+
+################################################################################
+################################ BUILD  TARGETS ################################
+################################################################################
+
+#
+# Top-Level Targets (TLTs)
+#
+.PHONY: all dev druidbsd tools
+all:      depend $(ALL_ISO)
+dev:      depend dev_promote $(DEV_ISO) dev_restore
+druidbsd: depend $(DRUIDBSD_ISO)
+tools:    depend $(TOOLS_ISO)
+
+#
+# ISO Targets
+#
+
+$(ALL_ISO): override VERSION = $(VERSION_ALL)
+$(ALL_ISO): GNUmakefile $(ISO_DEP) $(TOOLS_DEP) $(DRUIDBSD_DEP)
+
+$(DEV_ISO): override VERSION = $(VERSION_DEV)
+$(DEV_ISO): GNUmakefile $(ISO_DEP) $(TOOLS_DEP) $(DRUIDBSD_DEP)
+
+$(DRUIDBSD_ISO): override VERSION = $(VERSION_DRUIDBSD)
+$(DRUIDBSD_ISO): GNUmakefile $(ISO_DEP) $(TOOLS_DEP) $(DRUIDBSD_DEP)
+
+$(TOOLS_ISO): override VERSION = $(VERSION_TOOLS)
+$(TOOLS_ISO): GNUmakefile $(ISO_DEP) $(TOOLS_DEP)
+
+#
+# Implicit Pattern Rule for creating our completed ISO files
+#
+%.iso: override APPID = $(call appid,$@)
+%.iso:
+	$(warning Building '$(APPID)' ISO9660 image...)
+	$(if $(shell [ "$(VERSION)" ] || echo 1), \
+	     $(error No version specified))
+	( cd $(SRCDIR) && \
+	  $(MKISOFS) \
+	  	-A "$(APPID)" \
+	  	$(MKISOFS_OPTS) \
+	  	$(ISO9660_OPTS) \
+	  	$(ISOBOOT_OPTS) \
+	  	-o "../$@" $(OBJECTS) \
+	)
+ifeq "$(ISOHYBRID)" "1"
+	$(ISOHYBRID_PATH) $(ISOHYBRID_OPTS) "$@"
+endif
+
+#
+# Individual Targets
+#
+
+GNUmakefile: $(MAKEFILE_DEP)
+	$(warning Package configuration updated. Cleaning and reconfiguring)
+	./config.status --recheck
+	./config.status
+	$(MAKE) $(MFLAGS) clean
+
+$(SRCDIR)/$(BOOTFILE): $(DEPDIR)/isolinux.bin
+	$(warning Copying ISO9660 boot-loader template to source tree)
+	cp -pfv $(DEPDIR)/isolinux.bin $@
+
+$(SRCDIR)/$(VERSION_INF):
+	$(warning Generating $@...)
+	echo "VERSION = $(strip $(VERSION))-RELEASE" > $@
+
+$(MDROOT)/$(MDROOT_LOADER): $(DEPDIR)/cdboot
+	$(warning Copying FreeBSD boot-loader template to source tree)
+	cp -pfv $(DEPDIR)/cdboot $@
+
+$(SRCDIR)/$(MDROOT_ISO): $(MDROOT_DEP)
+	$(warning Building 'mdroot' ISO9660 image for FreeBSD boot-sequence...)
+	( cd $(MDROOT) && \
+	  $(MKISOFS) \
+	  	-V "mdroot" -A "FreeBSD" \
+	  	$(MKISOFS_OPTS) \
+	  	$(ISO9660_OPTS) \
+	  	-b $(MDROOT_LOADER) -no-emul-boot -c boot.catalog \
+	  	-boot-load-size 4 \
+	  	-o "../$@" . \
+	)
+
+$(DEPDIR)/.freebsd_package_symlinks:
+	$(warning Checking FreeBSD package symlinks...)
+	$(if $(shell [ "$(VERSION)" ] || echo 1), \
+	     $(error No version specified))
+	@( if [ -d src/freebsd/repos ]; then \
+	   	cd src/freebsd/repos && \
+	   	$(FIND) */packages/All -name '*.t[bg]z' | \
+	   	( while read -r pkgpath; do \
+	   	  	release="$${pkgpath%%/*}"; \
+	   	  	pkgfile="$${pkgpath##*/}"; \
+	   	  	pkgname="$${pkgfile%.t[bg]z}"; \
+	   	  	for dir in ` \
+	   	  		( while read LINE; do \
+	   	  		  	[ "$${LINE%%|*}" = "$$pkgname" ] && \
+	   	  		  	echo "$$LINE" | $(AWK) -F'|' '{print $$7}'; \
+	   	  		  done \
+	   	  		) < "$$release/packages/INDEX" \
+	   	  	`; do \
+	   	  		pkgdir="$$release/packages/$$dir"; \
+	   	  		$(MKDIR) -pv "$$pkgdir"; \
+	   	  		echo '-> Entering directory `'"$$pkgdir'"; \
+	   	  		( cd "$$pkgdir" && \
+	   	  		  $(LN) -sfv "../All/$$pkgfile" "$$pkgfile"; \
+	   	  		  echo '<- Leaving directory `'"$$pkgdir'"; \
+	   	  		); \
+	   	  	done; \
+	   	  done; \
+	   	); \
+	   fi; \
+	)
+	@echo > $(DEPDIR)/.freebsd_package_symlinks
+
+$(DEPDIR)/.freebsd_rescue_symlinks:
+	$(warning Making FreeBSD rescue symlinks...)
+	$(if $(shell [ "$(VERSION)" ] || echo 1), \
+	     $(error No version specified))
+	@( if [ -e src/freebsd/rescue/rescue ]; then \
+	   	cd src/freebsd/rescue; \
+	   	for link in \[ atacontrol atmconfig badsect bsdlabel bunzip2   \
+	   	  bzcat bzip2 camcontrol cat ccdconfig chflags chgrp chio      \
+	   	  chmod chown chroot clri cp csh date dd devfs df dhclient     \
+	   	  disklabel dmesg dump dumpfs dumpon echo ed ex expr fastboot  \
+	   	  fasthalt fdisk fsck fsck_4.2bsd fsck_ffs fsck_msdosfs        \
+	   	  fsck_ufs fsdb fsirand gbde geom getfacl glabel gpart groups  \
+	   	  gunzip gzcat gzip halt head hostname id ifconfig init ipf    \
+	   	  kenv kill kldconfig kldload kldstat kldunload ldconfig link  \
+	   	  ln ls lzcat lzma md5 mdconfig mdmfs mkdir mknod mount        \
+	   	  mount_cd9660 mount_msdosfs mount_nfs mount_ntfs mount_nullfs \
+	   	  mount_udf mount_unionfs mt mv newfs newfs_msdos nos-tun      \
+	   	  pgrep ping ping6 pkill ps pwd rcorder rcp rdump realpath     \
+	   	  reboot red restore rm rmdir route routed rrestore rtquery    \
+	   	  rtsol savecore sconfig sed setfacl sh spppcontrol stty       \
+	   	  swapon sync sysctl tail tar tcsh tee test tunefs umount      \
+	   	  unlink unlzma unxz vi whoami xz xzcat zcat zfs zpool; do \
+	   		$(LN) -sfv rescue "$$link"; \
+	   	done; \
+	   fi; \
+	)
+	@echo > $(DEPDIR)/.freebsd_rescue_symlinks
+
+#
+# [Phony] Service Targets
+#
+
+.PHONY: dev_promote dev_restore
+dev_promote:
+	$(warning Removing .dev suffixes (moving existing copies to .old))
+	$(if $(shell [ "$(VERSION_DEV)" ] || echo 1), \
+	     $(error No version specified))
+	@$(FIND) * -name '*.dev' | \
+	( while read -r devpath; do \
+	  	echo "--> Moving: $$devpath"; \
+	  	newpath="$${devpath%.dev}"; \
+	  	[ -e "$$newpath" ] && \
+	  		$(MV) -iv "$$newpath" "$$newpath.old"; \
+	  	$(MV) -fv "$$devpath" "$$newpath"; \
+	  done \
+	)
+dev_restore:
+	$(warning Removing .old suffixes (moving existing copies to .dev))
+	@$(FIND) * -name '*.old' | \
+	( while read -r oldpath; do \
+	  	echo "--> Moving: $$oldpath"; \
+	  	newpath="$${oldpath%.old}"; \
+	  	[ -e "$$newpath" ] && \
+	  		$(MV) -iv "$$newpath" "$$newpath.dev"; \
+	  	$(MV) -fv "$$oldpath" "$$newpath"; \
+	  done \
+	)
+
+.PHONY: rm_freebsd_package_symlinks
+rm_freebsd_package_symlinks:
+	$(warning Removing FreeBSD package symlinks...)
+	@( if [ -d src/freebsd/repos ]; then \
+	   	cd src/freebsd/repos && \
+	   	$(FIND) */packages/All -name '*.t[bg]z' | \
+	   	( while read -r pkgpath; do \
+	   	  	release="$${pkgpath%%/*}"; \
+	   	  	pkgfile="$${pkgpath##*/}"; \
+	   	  	pkgname="$${pkgfile%.t[bg]z}"; \
+	   	  	for dir in ` \
+	   	  		( while read LINE; do \
+	   	  		  	[ "$${LINE%%|*}" = "$$pkgname" ] && \
+	   	  		  	echo "$$LINE" | $(AWK) -F'|' '{print $$7}'; \
+	   	  		  done \
+	   	  		) < "$$release/packages/INDEX" \
+	   	  	`; do \
+	   	  		$(RM) -Rfv "$$release/packages/$$dir"; \
+	   	  	done; \
+	   	  done; \
+	   	); \
+	   fi; \
+	)
+	@$(RM) -f $(DEPDIR)/.freebsd_package_symlinks
+
+.PHONY: rm_freebsd_rescue_symlinks
+rm_freebsd_rescue_symlinks:
+	$(warning Removing FreeBSD rescue symlinks...)
+	@( if [ -d src/freebsd/rescue ]; then \
+	   	cd src/freebsd/rescue && \
+	   	$(FIND) . -type l -exec $(RM) -f '{}' ';'; \
+	   fi; \
+	)
+	@$(RM) -f $(DEPDIR)/.freebsd_rescue_symlinks
+
+.PHONY: clean clean_src clean_mdroot
+clean: rm_freebsd_package_symlinks rm_freebsd_rescue_symlinks clean_src clean_mdroot
+clean_src:
+	$(warning Cleaning $(SRCDIR)...)
+	$(RM) -f $(SRCDIR)/$(VERSION_INF)
+	$(RM) -f $(SRCDIR)/$(BOOTFILE)
+	$(RM) -f $(SRCDIR)/$(BCATALOG)
+	$(RM) -f $(SRCDIR)/$(MDROOT_ISO)
+clean_mdroot:
+	$(warning Cleaning $(MDROOT)...)
+	$(RM) -f $(MDROOT)/$(MDROOT_LOADER)
+
+.PHONY: distclean
+distclean: clean
+	$(warning Scrubbing distribution...)
+	$(RM) -Rf autom4te.cache
+	$(RM) -f config.log config.status GNUmakefile
+	$(RM) -f *.iso
+
+################################################################################
+############################ EXTERNAL  DEPENDENCIES ############################
+################################################################################
+
+.PHONY: depend
+depend: $(DEPEND_DEP)
+
+################################################################################
+# END
+################################################################################
+#
+# $Header: /cvsroot/druidbsd/druidbsd/druidbsd/GNUmakefile.in,v 1.1.1.1 2010/09/15 20:36:04 devinteske Exp $
+#
+# $Copyright: 2010 Devin Teske. All rights reserved. $
+#
+# $Log: GNUmakefile.in,v $
+# Revision 1.1.1.1  2010/09/15 20:36:04  devinteske
+# Initial import of project.
+#
+#
+################################################################################

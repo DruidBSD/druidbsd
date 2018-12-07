@@ -1,0 +1,103 @@
+--- release/i386/boot_crunch.conf.orig	2010-06-13 19:09:06.000000000 -0700
++++ release/i386/boot_crunch.conf	2010-09-10 21:59:01.000000000 -0700
+@@ -1,44 +1,99 @@
+ # $FreeBSD: src/release/i386/boot_crunch.conf,v 1.67.2.2.2.1 2010/06/14 02:09:06 kensmith Exp $
+ 
+-buildopts -DRELEASE_CRUNCH -Dlint
++buildopts -DRELEASE_CRUNCH -Dlint -DWITHOUT_OPENSSL
+ 
+ srcdirs /usr/src/bin
++progs cat
++progs chflags
++progs chmod
++progs cp
+ progs hostname
++progs kill
++progs ln
++progs mkdir
++progs mv
+ progs pwd
+ progs rm
++progs rmdir
+ progs sh
++progs sleep
+ progs test
+ ln sh -sh
+ ln test [
+ 
+ srcdirs /usr/src/sbin
++progs bsdlabel
+ progs camcontrol
+ progs dhclient
+ progs fsck_ffs
+ progs ifconfig
++progs init
++progs ldconfig
++progs mount
++progs mount_cd9660
+ progs mount_nfs
+ progs newfs
++progs reboot
+ progs route
+ progs rtsol
+ progs tunefs
++ln bsdlabel disklabel
+ ln fsck_ffs fsck_4.2bsd
+ ln fsck_ffs fsck_ufs
++ln reboot halt
+ 
+ srcdirs /usr/src/usr.bin
++progs at
++progs awk
++progs bzip2
+ progs cpio
++progs ee
+ progs find
+ progs minigzip
++progs passwd
++progs printf
+ progs sed
++progs tar
++progs tail
++progs uniq
++ln at atq
++ln at atrm
++ln at batch
++ln bzip2 bunzip2
++ln bzip2 bzcat
+ ln minigzip gzip
+ ln minigzip gunzip
+ ln minigzip zcat
+ 
+ srcdirs /usr/src/usr.sbin
+ progs arp
++progs chown
++progs moused
++progs mtree
+ progs ppp
++progs pw
++progs pwd_mkdb
++progs sendmail
++special sendmail objs alias.o arpadate.o bf.o collect.o conf.o control.o convtime.o daemon.o deliver.o domain.o envelope.o err.o headers.o macro.o main.o map.o mci.o milter.o mime.o parseaddr.o queue.o ratectrl.o readcf.o recipient.o savemail.o sasl.o sfsasl.o shmticklib.o sm_resolve.o srvrsmtp.o stab.o stats.o sysexits.o timers.o tls.o trace.o udb.o usersmtp.o util.o version.o ../../lib/libsmutil/libsmutil.a ../../lib/libsm/libsm.a
+ progs sysinstall
++progs tzsetup
+ progs usbconfig
++progs vidcontrol
++ln chown chgrp
++ln sendmail newaliases
++ln sendmail mailq
++
++srcdirs /usr/src/gnu/usr.bin
++progs dialog
++progs grep
++special grep objs closeout.o dfa.o error.o exclude.o grep.o grepmat.o hard-locale.o isdir.o kwset.o obstack.o quotearg.o savedir.o search.o xmalloc.o xstrtoumax.o ../../lib/libregex/libgnuregex.a
++progs sort
++
++srcdirs /usr/src/usr.sbin/cron
++progs crontab
++special crontab objs crontab.o ../lib/libcron.a
+ 
+ libs -ll -ledit -lutil -lmd -lcrypt -lftpio -lz -lnetgraph
+ libs -ldialog -lncurses -ldisk -lcam -lsbuf -lufs -ldevinfo
+ libs -lbsdxml -larchive -lbz2 -lusb -ljail
++libs -lgeom -lkiconv -lm -lwrap -lpam

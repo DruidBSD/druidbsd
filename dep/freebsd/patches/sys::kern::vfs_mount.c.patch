@@ -1,0 +1,31 @@
+--- sys/kern/vfs_mount.c.orig	2010-02-25 11:36:35.652540000 -0800
++++ sys/kern/vfs_mount.c	2010-02-26 06:37:31.000000000 -0800
+@@ -1762,19 +1762,28 @@ parse_mountroot_options(struct mntarg *m
+ 		val = strchr(name, '=');
+ 		if (val != NULL) {
+ 			*val = '\0';
+ 			++val;
+ 		}
++#if 0
++		/* !!!WARNING!!!
++		 * This code works as expected for normal boots, but does not
++		 * work when using vfs.root.mountfrom, booting into a Memory
++		 * Filesystem (MFS). This code should be disabled for kernels
++		 * used with Druid, until a better patch can be produced (one
++		 * that can work for normal boots too).
++		 */
+ 		if( strcmp(name, "rw") == 0 ||
+ 		    strcmp(name, "noro") == 0) {
+ 			/*
+ 			 * The first time we mount the root file system,
+ 			 * we need to mount 'ro', so We need to ignore
+ 			 * 'rw' and 'noro' mount options.
+ 			 */
+ 			continue;
+ 		}
++#endif
+ 		name_arg = strdup(name, M_MOUNT);
+ 		val_arg = NULL;
+ 		if (val != NULL) 
+ 			val_arg = strdup(val, M_MOUNT);
+ 

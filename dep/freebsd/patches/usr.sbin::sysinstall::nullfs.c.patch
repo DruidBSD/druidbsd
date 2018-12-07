@@ -1,0 +1,274 @@
+--- usr.sbin/sysinstall/nullfs.c.orig	2010-03-30 13:50:14.000000000 -0700
++++ usr.sbin/sysinstall/nullfs.c	2010-07-31 21:59:16.000000000 -0700
+@@ -0,0 +1,271 @@
++/*
++ * The new sysinstall program.
++ *
++ * This is probably the last attempt in the `sysinstall' line, the next
++ * generation being slated to essentially a complete rewrite.
++ *
++ * $FreeBSD$
++ *
++ * Copyright (c) 2010
++ *	Devin Teske.  All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer,
++ *    verbatim and that no modifications are made prior to this
++ *    point in the file.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ *
++ * THIS SOFTWARE IS PROVIDED BY DEVIN TESKE ``AS IS'' AND
++ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED.  IN NO EVENT SHALL DEVIN TESKE OR HIS PETS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
++ * OR SERVICES; LOSS OF USE, DATA, LIFE OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
++ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
++ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ */
++
++#include "sysinstall.h"
++#include <sys/param.h>
++#include <sys/mount.h>
++#include <sys/uio.h>
++#include <sys/linker.h>
++
++static Boolean NullFSMounted;
++static char mountpoint[] = "/dist";
++static char chroot_mount[] = "/mnt";
++
++Boolean
++mediaInitNullFS(Device *dev)
++{
++    WINDOW	*w = savescr();
++    char	source[PATH_MAX], target[PATH_MAX];
++    struct	stat sb;
++    struct	xvfsconf vfc;
++    struct	iovec iov[6];
++    int		error;
++
++    if (NullFSMounted)
++	return TRUE;
++
++    dialog_clear_norefresh();
++
++    /*
++     * Resolve pathname and verify that we were supplied a path
++     * to a directory (which is to contain our distribution files).
++     */
++    if (realpath(dev->private, source) != NULL && stat(source, &sb) == 0)
++    {
++	if (!S_ISDIR(sb.st_mode))
++	{
++	    msgConfirm("%s: not a directory", dev->private);
++	    return FALSE;
++	}
++    }
++    else
++    {
++	msgConfirm("%s: %s", dev->private, strerror(errno));
++	return FALSE;
++    }
++
++    /*
++     * Assemble the pathname to the directory on which we will mount the
++     * FreeBSD installation files. Sysinstall expects these files to be
++     * available within the `/dist' directory mounted within the installation
++     * target (`/mnt') which will later become the functioning root during
++     * the install (via chroot(2)).
++     */
++    target[0] = '\0';
++    strlcat(target, chroot_mount, PATH_MAX);
++    strlcat(target, mountpoint, PATH_MAX);
++
++    /*
++     * Check for the existence of our required mount-point.
++     * Create the directory if it does not already exist.
++     * Produce an error message if the path does not point to a directory.
++     */
++    if (stat(target, &sb))
++    {
++	mode_t mode = (S_IRWXU|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH);
++	if (mkdir(target, mode))
++	{
++	    msgConfirm("%s: %s", target, strerror(errno));
++	    return FALSE;
++	}
++    }
++    else
++    {
++	if (!S_ISDIR(sb.st_mode))
++	{
++	    msgConfirm("%s: not a directory", target);
++	    return FALSE;
++	}
++    }
++
++    msgNotify("Mounting %s via NULLFS mount on %s", source, target);
++
++    /*
++     * Test for VFS support of NULLFS in active kernel (either as
++     * compiled-in support or provided by loaded-module).
++     */
++    error = getvfsbyname(dev->name, &vfc);
++    if (error)
++    {
++	/*
++	 * NULLFS VFS support is not available. Try to load the module.
++	 */
++
++	int	found = 0;
++	char	*path, *tmppath, *element;
++	char	kldpath[PATH_MAX];
++
++	/*
++	 * Ask the kernel for a semi-colon-separated list of directories
++	 * in which we should expect to find our required module.
++	 */
++	path = getsysctlbyname("kern.module_path");
++
++	/*
++	 * Loop over directories, searching for `nullfs' module.
++	 */
++	tmppath = path;
++	while ((element = strsep(&tmppath, ";")) != NULL)
++	{
++	    strlcpy(kldpath, element, PATH_MAX);
++	    if (kldpath[strlen(kldpath) - 1] != '/')
++	    {
++		strlcat(kldpath, "/", PATH_MAX);
++	    }
++	    strlcat(kldpath, "nullfs.ko", PATH_MAX);
++
++	    if (stat(kldpath, &sb) != -1)
++	    {
++		found = 1;
++		break;
++	    }
++	}
++	free(path);
++
++	if (!found)
++	{
++	    dialog_clear_norefresh();
++	    msgConfirm("Could not find `nullfs.ko' in the module path");
++	    return FALSE;
++	}
++
++	/*
++	 * Attempt to load the NULLFS VFS kernel module.
++	 */
++	if (kldload(kldpath) < 0)
++	{
++	    dialog_clear_norefresh();
++	    msgConfirm("kldload(nullfs): Unable to load module");
++	    return FALSE;
++	}
++
++	/*
++	 * Check our results (pedantism)
++	 */
++	error = getvfsbyname("nullfs", &vfc);
++	if (error)
++	{
++	    dialog_clear_norefresh();
++	    msgConfirm("nullfs/loopback filesystem is not available");
++	    return FALSE;
++	}
++    }
++
++    /* Set nmount(2) device-type */
++    iov[0].iov_base	= strdup("fstype");
++    iov[0].iov_len	= sizeof("fstype");
++    iov[1].iov_base	= vfc.vfc_name;
++    iov[1].iov_len	= strlen(vfc.vfc_name) + 1;
++
++    /* Set file-system source directory for MOUNT_TYPE_NULL */
++    iov[2].iov_base	= strdup("fspath");
++    iov[2].iov_len	= sizeof("fspath");
++    iov[3].iov_base	= target;
++    iov[3].iov_len	= strlen(target) + 1;
++
++    /* Set file-system target (mount-point) directory */
++    iov[4].iov_base	= strdup("target");
++    iov[4].iov_len	= sizeof("target");
++    iov[5].iov_base	= source;
++    iov[5].iov_len	= strlen(source) + 1;
++
++    /*
++     * Mount install-source directory within our install-target.
++     */
++    if (nmount(iov, 6, MNT_RDONLY))
++    {
++	dialog_clear_norefresh();
++	msgConfirm("Error mounting %s on %s: %s (%u)",
++	           source, target, strerror(errno), errno);
++	return FALSE;
++    }
++    NullFSMounted = TRUE;
++    if (isDebug())
++	msgDebug("Successfully mounted %s on %s\n", source, target);
++
++    dialog_clear(); /* clear msgNotify */
++
++    /*
++     * Prepare for install (call chroot(2) and update state variables).
++     */
++    if (chroot(chroot_mount) == -1)
++    {
++	msgConfirm("mediaInitNullFS: Unable to chroot to %s - this is bad!",
++	           chroot_mount);
++	return FALSE;
++    }
++    chdir("/");
++    variable_set2(RUNNING_ON_ROOT, "yes", 0);
++
++    /* Must set proper VAR_NULLFS_PATH _after_ calling chroot(2) */
++    variable_set2(VAR_NULLFS_PATH, mountpoint, 0);
++
++    /* Configure various files in /etc */
++    configResolv(NULL);
++    configFstab(NULL);
++
++    restorescr(w);
++    return TRUE;
++}
++
++FILE *
++mediaGetNullFS(Device *dev, char *file, Boolean probe)
++{
++    return mediaGenericGet(mountpoint, file);
++}
++
++void
++mediaShutdownNullFS(Device *dev)
++{
++    char target[PATH_MAX];
++
++    /*
++     * Assemble the pathname to the directory on which we earlier mounted the
++     * FreeBSD installation files.
++     */
++    target[0] = '\0';
++    strlcat(target, chroot_mount, PATH_MAX);
++    strlcat(target, mountpoint, PATH_MAX);
++
++    if (!NullFSMounted)
++	return;
++    if (unmount(target, MNT_FORCE) != 0)
++	msgConfirm("Could not unmount the NullFS partition from %s: %s",
++	           target, strerror(errno));
++    else
++	NullFSMounted = FALSE;
++    return;
++}

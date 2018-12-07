@@ -1,0 +1,64 @@
+--- usr.sbin/sysinstall/user.c.orig	2010-08-24 07:21:25.000000000 -0700
++++ usr.sbin/sysinstall/user.c	2010-08-25 18:06:08.000000000 -0700
+@@ -175,7 +175,7 @@ verifyGroupSettings(void)
+ 	feepout("The group name field must not be empty!");
+ 	return 0;
+     }
+-    snprintf(tmp, 256, "pw group show -q -n %s > /dev/null", gname);
++    snprintf(tmp, 256, "%spw group show -q -n %s > /dev/null", xarchInstall() ? "/stand/" : "", gname);
+     if (vsystem("%s", tmp) == 0) {
+ 	feepout("This group name is already in use.");
+ 	return 0;
+@@ -230,8 +230,8 @@ completeGroup(void)
+ 	for (i = getdtablesize(); i > 2; i--)
+ 	    close(i);
+ 
+-	execv("/usr/sbin/pw", vec);
+-	msgDebug("Cannot execv() /usr/sbin/pw.\n");
++	execv(xarchInstall() ? "/stand/pw" : "/usr/sbin/pw", vec);
++	msgDebug("Cannot execv() %s.\n", xarchInstall() ? "/stand/pw" : "/usr/sbin/pw");
+ 	_exit(99);
+     }
+     else
+@@ -295,8 +295,8 @@ addGroup(WINDOW *ds_win)
+ 	else
+ 	    vec[VEC_GID - 1] = 0;
+ 
+-	execv("/usr/sbin/pw", vec);
+-	msgDebug("Cannot execv() /usr/sbin/pw.\n");
++	execv(xarchInstall ? "/stand/pw" : "/usr/sbin/pw", vec);
++	msgDebug("Cannot execv() %s.\n", xarchInstall() ? "/stand/pw" : "/usr/sbin/pw");
+ 	_exit(99);
+     }
+     else
+@@ -414,7 +414,7 @@ verifyUserSettings(WINDOW *ds_win)
+ 	feepout("The user name field must not be empty!");
+ 	return 0;
+     }
+-    snprintf(tmp, 256, "pw user show -q -n %s > /dev/null", uname);
++    snprintf(tmp, 256, "%spw user show -q -n %s > /dev/null", xarchInstall() ? "/stand/" : "", uname);
+     if (vsystem("%s", tmp) == 0) {
+ 	feepout("This user name is already in use.");
+ 	return 0;
+@@ -495,8 +495,8 @@ completeUser(void)
+ 
+ 	vec[VEC_UNAME] = uname;
+ 
+-	execv("/usr/sbin/pw", vec);
+-	msgDebug("Cannot execv() /usr/sbin/pw.\n");
++	execv(xarchInstall() ? "/stand/pw" : "/usr/sbin/pw", vec);
++	msgDebug("Cannot execv() %s.\n", xarchInstall() ? "/stand/pw" : "/usr/sbin/pw");
+ 	_exit(99);
+     }
+     else
+@@ -600,8 +600,8 @@ addUser(WINDOW *ds_win)
+ 	}
+ 	vec[i] = 0;
+ 
+-	execv("/usr/sbin/pw", vec);
+-	msgDebug("Cannot execv() /usr/sbin/pw.\n");
++	execv(xarchInstall() ? "/stand/pw" : "/usr/sbin/pw", vec);
++	msgDebug("Cannot execv() %s.\n", xarchInstall() ? "/stand/pw" : "/usr/sbin/pw");
+ 	_exit(99);
+     }
+     else

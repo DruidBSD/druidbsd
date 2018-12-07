@@ -1,0 +1,57 @@
+#!/bin/sh
+
+############################################################ CONFIGURATION
+
+tmpfs="/usr/tmp"
+swapfile="$tmpfs/swapfile"
+mdunit=1
+
+############################################################ FUNCTIONS
+
+: function ; usage ( ) #
+{
+	echo "Usage: $0 SIZE"
+	echo "Options:"
+	echo "	SIZE	Size of swapfile in MB"
+	exit ${FAILURE-1}
+}
+
+############################################################ MAIN SOURCE
+
+#
+# Exit if the swapfile has already been configured
+#
+# XXX Maybe we should instead deconfigure the existing swapfile (in the event
+#     that the user wants to specify a new size)
+#
+if [ -e "$swapfile" ]; then
+	echo "$0: swapfile \`$swapfile' already exists"
+	exit ${FAILURE-1}
+fi
+
+#
+# Read positional command-line arguments
+#
+size=$1
+[ "$size" ] || usage
+
+# Load required kernel module
+kldload tmpfs
+
+# Create directory where we'll mount our memory-based temporary storage
+mkdir -p /usr/tmp
+
+# Mount tmpfs
+mount -t tmpfs tmpfs /usr/tmp
+
+# Create our swapfile
+dd if=/dev/zero of=/usr/tmp/swapfile bs=1M count=$size > /dev/null 2>&1
+
+# Configure a new md(4) device to interface to our swapfile
+mdconfig -a -t vnode -f /usr/tmp/swapfile -u $mdunit
+
+# Add swap space from our md(4) device
+swapon /dev/md$mdunit
+
+# Show the user what we've added
+swapinfo -h

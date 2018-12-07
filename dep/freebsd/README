@@ -1,0 +1,11 @@
+$Header: /cvsroot/druidbsd/druidbsd/druidbsd/dep/freebsd/README,v 1.1.1.1 2010/09/15 20:36:23 devinteske Exp $
+
+The files in this directory [and subsequent sub-directories] are not direct-
+dependencies to Druid but rather the source-dependencies required to build the
+necessary FreeBSD elements of the Druid source itself.
+
+For example, the sources required to build the file:
+
+	mdroot/boot/mfsroot.gz
+
+are located in the `mfsroot' sub-directory of this directory.

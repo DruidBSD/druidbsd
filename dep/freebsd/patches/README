@@ -1,0 +1,205 @@
+$Header: /cvsroot/druidbsd/druidbsd/druidbsd/dep/freebsd/patches/README,v 1.1.1.1 2010/09/15 20:36:24 devinteske Exp $
+
+These patch files, when applied to the FreeBSD Operating System source-code,
+will allow you to compile a custom version of sysinstall(8) and assemble a
+custom implementation of the `mfsroot.gz' compressed boot-floppy image.
+
+First, you need to check out an up-to-date FreeBSD source tree. This is done
+using cvsup(1). Create a new file named "src-all.cvsup" with the following
+file-contents:
+
+	*default host=cvsup4.FreeBSD.org
+	*default base=/var/db/freebsd
+	*default prefix=/usr
+	*default release=cvs tag=RELENG_8_1
+	*default delete use-rel-suffix
+	*default compress
+	src-all
+
+NOTE: You may need to manually create the directory `/var/db/freebsd'. This
+      directory does not exist by default and cvsup will refuse to run unless
+      it exists.
+
+Once you've created `src-all.cvsup', you are now ready to use said-file with
+the cvsup(1) utility to download the FreeBSD Operating System source-code for
+modification and compiling. Execute the following command:
+
+	cvsup src-all.cvsup
+
+NOTE: You will need approximately 600MB of storage space available on the file-
+      system that `/usr/src' resides on.
+
+NOTE: If `/usr/src' is not writable by you, you may need to execute the above
+      command with root-privileges (using sudo(8) for example).
+
+After fetching the source code to FreeBSD, you will need to apply our custom
+patchset contained in this directory by executing the following commands:
+
+	cat *.patch | patch -Nd /usr/src
+
+With patches applied, it is now time to compile the operating system object-
+files which are in-turn used to compile the release data.
+
+Now, we are ready to compile the core operating system bits. Execute the
+following commands to perform the first-pass of compilation:
+
+	cd /usr/src
+	# If using csh or tcsh:
+	make buildworld -DWITHOUT_OPENSSL -DWITHOUT_GSSAPI \
+	     -DWITHOUT_KERBEROS -DWITHOUT_KERBEROS_SUPPORT \
+	     -DWITHOUT_OPENSSH |& tee buildworld.log
+	# Otherwise (sh/bash/others):
+	make buildworld -DWITHOUT_OPENSSL -DWITHOUT_GSSAPI \
+	     -DWITHOUT_KERBEROS -DWITHOUT_KERBEROS_SUPPORT \
+	     -DWITHOUT_OPENSSH 2>&1 | tee buildworld.log
+
+NOTE: You will need approximately 600MB of storage space available on the file-
+      system that `/usr/obj' resides on.
+
+If the build fails, you can find a comprehensive log in the `buildworld.log'
+file in the current working directory (/usr/src).
+
+Next, it's time to compile the release distribution (which can take several
+hours).
+
+To minimize the size of our final mfsroot image (the DruidBSD boot image), we
+must specify some build constraints to minimize link dependencies to the
+crunchgen(1) `boot_crunch' configuration. This is done by adding flags to the
+WORLD_FLAGS variable on the make(1) command-line when invoking any of the
+`release' family of targets in `/usr/release/Makefile'. THe options specified
+in the WORLD_FLAGS variable (separated by spaces) are used by the release build
+when performing a `make installworld' in the directory `/usr/src' initially to
+link `/usr/obj' binaries and install a build environment to `/usr/release' and
+used again later when performing a `make buildworld' in the directory
+`/usr/release/usr/src' (a virgin copy of `/usr/src').
+
+When you perform a full `make release' in `/usr/src/release', the following
+occurs (in order) to compile the custom release:
+
+- A suitable build-environment is assembled in `/usr/release' from the object-
+  files previously compiled to `/usr/obj' (from the prior `buildworld'
+  performed in `/usr/src').
+- A fresh copy of the source tree (`/usr/src') is copied to the directory
+  `/usr/release/usr/src'
+- A chroot(8) is performed into the assembled build-environment at the
+  directory `/usr/release'
+- The source-tree within the build-environment (`/usr/release/usr/src') is
+  compiled using any additional options previously specified in WORLD_FLAGS.
+
+NOTE: This allows you to compile a release that is a different architecture
+      than the one booted-from. To achieve cross-platform releases, the initial
+      `buildworld' performed in `/usr/src' on the booted operating system ought
+      to be an XARCH build to another platform, producing cross-platorm object-
+      files in `/usr/obj' (which are in-turn installed to `/usr/release' and
+      used to re-compile the source tree from within the chroot'ed environment
+      that is native to the desired release architecture).
+
+NOTE: For a full list of possible options available to WORLD_FLAGS, see
+      src.conf(5).
+
+Execute the following commands to compile the FreeBSD release.
+
+	cd /usr/src/release
+	# If using csh or tcsh:
+	make release CHROOTDIR=/usr/release EXTSRCDIR=/usr/src \
+	     NODOC=YES NO_FLOPPIES=YES NOCDROM=YES NOPORTS=YES \
+	     WORLD_FLAGS="-DWITHOUT_OPENSSL -DWITHOUT_GSSAPI \
+	     -DWITHOUT_KERBEROS -DWITHOUT_KERBEROS_SUPPORT \
+	     -DWITHOUT_OPENSSH" |& tee release.log
+	# Otherwise (sh/bash/others):
+	make release CHROOTDIR=/usr/release EXTSRCDIR=/usr/src \
+	     NODOC=YES NO_FLOPPIES=YES NOCDROM=YES NOPORTS=YES \
+	     WORLD_FLAGS="-DWITHOUT_OPENSSL -DWITHOUT_GSSAPI \
+	     -DWITHOUT_KERBEROS -DWITHOUT_KERBEROS_SUPPORT \
+	     -DWITHOUT_OPENSSH" 2>&1 | tee release.log
+
+NOTE: You will need approximately 3GB of storage space available on the file-
+      system that `/usr/release' resides on.
+
+NOTE: If `/usr/release' is not writable by you, you may need to execute the
+      above command with root-privileges (using sudo(8) for example).
+
+NOTE: Above you will see that we passed `-DWITHOUT_OPENSSL' (see src.conf(5))
+      in the WORLD_FLAGS option of `make release' (see release(7)). This causes
+      tar(1) to be compiled without SSL support, creating an executable that
+      does not require linking against libcrypto/libssl (see crypto(3) and
+      ssl(3)).
+
+NOTE: According to src.conf(5), setting WITHOUT_OPENSSL will also enforce the
+      options WITHOUT_GSSAPI, WITHOUT_KERBEROS, WITHOUT_KERBEROS_SUPPORT, and
+      WITHOUT_OPENSSH. However, currently passing WITHOUT_OPENSSL alone causes
+      a "No such file or directory" error when making-clean in the `libgssapi'
+      directory. Explicitly passing the WITHOUT_GSSAPI option gets through that
+      problem, and thus it is now considered best practice to pass all the
+      aforementioned options explicitly in accordance with the documentation on
+      WITHOUT_OPENSSL in src.conf(5).
+
+If the build fails, you can find a comprehensive log in the `release.log'
+file in the current working directory (/usr/src/release).
+
+NOTE: Running `make release ...' will cause the `/usr/release' directory to be
+      erased and regenerated each time. If a build error occurs and you know
+      how to correct it, you can resume the build where it left off by instead
+      performing a `make rerelease ... RELEASENOUPDATE=YES' using the following
+      syntax (notice the different target used -- `rerelease' vs. `release' and
+      the addition of `RELEASENOUPDATE=YES' to the end of the command):
+
+	cd /usr/src/release
+	# If using csh or tcsh:
+	make rerelease CHROOTDIR=/usr/release EXTSRCDIR=/usr/src \
+	     NODOC=YES NO_FLOPPIES=YES NOCDROM=YES NOPORTS=YES \
+	     WORLD_FLAGS="-DWITHOUT_OPENSSL -DWITHOUT_GSSAPI \
+	     -DWITHOUT_KERBEROS -DWITHOUT_KERBEROS_SUPPORT \
+	     -DWITHOUT_OPENSSH" RELEASENOUPDATE=YES \
+	     |& tee -a release.log
+	# Otherwise (sh/bash/others):
+	make rerelease CHROOTDIR=/usr/release EXTSRCDIR=/usr/src \
+	     NODOC=YES NO_FLOPPIES=YES NOCDROM=YES NOPORTS=YES \
+	     WORLD_FLAGS="-DWITHOUT_OPENSSL -DWITHOUT_GSSAPI \
+	     -DWITHOUT_KERBEROS -DWITHOUT_KERBEROS_SUPPORT \
+	     -DWITHOUT_OPENSSH" RELEASENOUPDATE=YES 2>&1 \
+	     | tee -a release.log
+
+NOTE: After a successful build, if you need to recompile after making
+      additional changes you can remove the files `release.4' and `release.8'
+      in the directory `/usr/release/usr/obj/usr/src/release' and then re-run
+      the `make rerelease' command (as illustrated above). However, make sure
+      that your changes are made in the `/usr/release/usr/src' directory.
+      Changes made in `/usr/src' will not automatically be updated in the
+      `/usr/release/usr/src' directory.
+
+When the release has successfully been built, you'll then have to pluck the
+compiled MFS root image from `/usr/release/R/stage/mfsroot/mfsroot.gz' (which
+contains [1] our patched sysinstall(8) binary and [2] some additional utilities
+required by Druid (such as `/stand/sleep', `/stand/mount', `/stand/printf', and
+`/stand/mount_cd9660') and copy it to the following places within the Druid
+sources:
+
+	druid/dep/freebsd/mfsroot/fis/dep/mfsroot.gz
+	druid/dep/freebsd/mfsroot/rescue/dep/mfsroot.gz
+
+Once copied to the appropriate location, you must then use the `make from_dep'
+command in each of the following directories to create the final boot images
+that will be incorporated into the Druid sources:
+
+	druid/dep/freebsd/mfsroot/fis
+	druid/dep/freebsd/mfsroot/rescue
+
+The `make from_dep' command, when executed in each of the above directories
+will produce a new `mfsroot.gz' file in the current working-directory. The
+`README' file in each of those directories contains instructions for where to
+place the newly-compiled `mfsroot.gz' file within the Druid sources.
+
+In addition, as of 8_0_RELEASE, a single patch is required against the kernel
+that will be used by Druid to boot into the FreeBSD install-environment.
+
+The dependencies generated from this code/patch-set can ONLY be compiled on
+FreeBSD. However, once the dependencies are generated and placed into the
+`druid/src' directory, you can then compile the rest of the Druid on any
+platform that meets these base requirements (also mentioned in the top-level
+`doc/BUILD' file):
+
+	- Can execute Bourne-shell scripts
+	- Has GNU make installed
+	- Has mkisofs installed
+

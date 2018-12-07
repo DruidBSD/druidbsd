@@ -1,0 +1,8 @@
+TOTALTIMEOUT 0
+
+INCLUDE /boot/include/isolinux-menu.cfg
+
+MENU TITLE Druid Tools Main Menu
+
+INCLUDE /boot/tools/isolinux.cfg
+INCLUDE /boot/other/isolinux.cfg
